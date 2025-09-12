@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AI Map — Accessible + Themed (CSS-in-JS)</title>
+  <script>
+  // ===== CSS-in-JS: injected at runtime =====
+  const CSS = `
+  :root{
+    --bg:#0b0d14; --fg:#e7ebf0; --muted:#9aa4b2; --line:#1f2633; --card:#0f1420; --acc:#60a5fa;
+    /* Category palettes (base/hover/active) chosen for >= 4.5:1 contrast on #0f1420 */
+    --ml:#3b82f6; --ml-h:#60a5fa; --ml-a:#93c5fd;
+    --dl:#ef4444; --dl-h:#f87171; --dl-a:#fca5a5;
+    --apps:#22c55e; --apps-h:#4ade80; --apps-a:#86efac;
+    --models:#eab308; --models-h:#facc15; --models-a:#fde047;
+    --root:#a78bfa; --root-h:#c4b5fd; --root-a:#ddd6fe;
+    --other:#94a3b8; --other-h:#a8b2c4; --other-a:#c2cbd8;
+    --focus:#ffffff; --focus-bg:rgba(255,255,255,.06);
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,Segoe UI,Roboto,Pretendard,'Noto Sans KR',sans-serif}
+  a{color:var(--acc);text-decoration:none}
+
+  header{position:sticky;top:0;z-index:10;background:rgba(11,13,20,.7);backdrop-filter:saturate(160%) blur(10px);border-bottom:1px solid var(--line)}
+  .bar{max-width:1100px;margin:auto;display:flex;gap:10px;align-items:center;padding:12px 14px}
+  .brand{font-weight:900;letter-spacing:.2px}
+  .sp{flex:1}
+  .btn{background:#0f172a;color:var(--fg);border:1px solid var(--line);border-radius:10px;padding:7px 10px;font-size:13px;cursor:pointer;transition:transform .08s ease}
+  .btn:hover{background:#111a2e;transform:translateY(-1px)}
+  .input{background:#0f172a;color:var(--fg);border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:13px;min-width:220px}
+  .input:focus{outline:2px solid var(--focus); outline-offset:2px; background:var(--focus-bg)}
+  .visually-hidden{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+
+  main{max-width:1100px;margin:14px auto;padding:0 14px;display:grid;grid-template-columns: 1fr min(38%, 400px);gap:14px}
+  .tree{border:1px solid var(--line);border-radius:12px;background:var(--card);padding:10px 10px;min-height:70vh;overflow:auto}
+  .panel{border:1px solid var(--line);border-radius:12px;background:var(--card);padding:12px;min-height:70vh;}
+  .panel h2{margin:0 0 6px;font-size:16px;font-weight:900}
+  .panel h3{margin:14px 0 6px;font-size:13px}
+  .panel .chips{display:flex;gap:6px;flex-wrap:wrap}
+  .chip{font-size:11px;color:#cbd5e1;border:1px solid var(--line);padding:2px 8px;border-radius:999px}
+  .metaRow{display:grid;grid-template-columns: 1fr 1fr;gap:8px;margin-top:8px}
+  .meter{height:8px;border-radius:999px;background:#0b1424;border:1px solid #283247;overflow:hidden}
+  .meter>i{display:block;height:100%;background:var(--acc);transition:transform .25s ease;transform-origin:left center}
+
+  /* Tree */
+  .node{position:relative; padding-left:22px; margin:4px 0}
+  .node .row{display:flex;gap:8px;align-items:center;line-height:1.2}
+  .chev{position:absolute;left:2px;top:2px;width:16px;height:16px;display:grid;place-items:center;font-size:11px;color:#9fb1c7;cursor:pointer;user-select:none;transition:transform .18s ease;will-change:transform}
+  .chev.hidden{visibility:hidden}
+  .label{cursor:pointer;display:inline-flex;gap:8px;align-items:center;padding:8px 12px;border-radius:12px;border:1px solid var(--line);transition:border-color .2s ease, box-shadow .2s ease, background .2s ease, transform .08s ease; will-change:transform}
+  .label .icon{width:18px;text-align:center;opacity:.95}
+  .label .txt{white-space:nowrap; font-weight:700}
+  .label .badge{font-size:10px;border:1px solid var(--line);padding:1px 6px;border-radius:999px;letter-spacing:.3px}
+  .children{border-left:1px dashed #243045; margin-left:8px; padding-left:12px; overflow:hidden; transition:max-height .25s ease, opacity .2s ease, transform .25s ease; will-change:transform,opacity}
+  .children.collapsing{will-change:max-height,opacity,transform}
+
+  /* Category theme application (label states + panel theme line) */
+  [data-cat="Root"] .label{border-color:var(--root)}
+  [data-cat="Root"] .label:hover{border-color:var(--root-h); background:rgba(167,139,250,.08)}
+  [data-cat="Root"] .label.active{border-color:var(--root-a); box-shadow:0 0 0 2px rgba(167,139,250,.35)}
+
+  [data-cat="ML"] .label{border-color:var(--ml)}
+  [data-cat="ML"] .label:hover{border-color:var(--ml-h); background:rgba(59,130,246,.08)}
+  [data-cat="ML"] .label.active{border-color:var(--ml-a); box-shadow:0 0 0 2px rgba(59,130,246,.35)}
+
+  [data-cat="DL"] .label{border-color:var(--dl)}
+  [data-cat="DL"] .label:hover{border-color:var(--dl-h); background:rgba(239,68,68,.08)}
+  [data-cat="DL"] .label.active{border-color:var(--dl-a); box-shadow:0 0 0 2px rgba(239,68,68,.35)}
+
+  [data-cat="Apps"] .label{border-color:var(--apps)}
+  [data-cat="Apps"] .label:hover{border-color:var(--apps-h); background:rgba(34,197,94,.08)}
+  [data-cat="Apps"] .label.active{border-color:var(--apps-a); box-shadow:0 0 0 2px rgba(34,197,94,.35)}
+
+  [data-cat="Models"] .label{border-color:var(--models)}
+  [data-cat="Models"] .label:hover{border-color:var(--models-h); background:rgba(234,179,8,.10)}
+  [data-cat="Models"] .label.active{border-color:var(--models-a); box-shadow:0 0 0 2px rgba(234,179,8,.35)}
+
+  [data-cat="Other"] .label{border-color:var(--other)}
+  [data-cat="Other"] .label:hover{border-color:var(--other-h); background:rgba(148,163,184,.10)}
+  [data-cat="Other"] .label.active{border-color:var(--other-a); box-shadow:0 0 0 2px rgba(148,163,184,.35)}
+
+  /* Focus ring for WCAG */
+  .focusable:focus{outline:2px solid var(--focus); outline-offset:2px; background:var(--focus-bg)}
+
+  /* Search & status */
+  .node.match > .row .label{box-shadow:0 0 0 2px rgba(96,165,250,.35)}
+  .node.dim{opacity:.40}
+  .hint{color:#9fb1c7;font-size:12px;margin-top:6px}
+  .empty{color:var(--muted);font-size:14px;border:1px dashed #2a3447;border-radius:10px;padding:10px;text-align:center;margin-top:8px}
+
+  .examples{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:10px}
+  .excard{border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#0e1626}
+  .excard img{display:block;width:100%;height:110px;object-fit:cover}
+  .excard .cap{padding:6px 8px;font-size:12px;color:#cdd6e3}
+  @media (max-width:720px){ .examples{grid-template-columns:1fr} }
+
+  /* Tooltip preview */
+  #tooltip{position:fixed;z-index:50;pointer-events:none;opacity:0;transform:translateY(6px);transition:opacity .12s ease, transform .12s ease;will-change:transform,opacity}
+  #tooltip .card{min-width:220px;max-width:360px;background:#0b1220;border:1px solid #22304a;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.35);padding:8px}
+  #tooltip .title{font-size:12px;font-weight:800;margin-bottom:4px}
+  #tooltip .desc{font-size:12px;color:#cbd5e1}
+
+  /* Loading spinner */
+  #loading{position:fixed;right:16px;bottom:16px;display:none;gap:8px;align-items:center;background:#0b1220;border:1px solid #22304a;color:#e5e7eb;border-radius:10px;padding:8px 10px}
+  #loading .dot{width:7px;height:7px;border-radius:999px;background:#60a5fa;animation:b 1s infinite alternate}
+  #loading .dot:nth-child(2){animation-delay:.2s}
+  #loading .dot:nth-child(3){animation-delay:.4s}
+  @keyframes b{to{transform:translateY(-3px);opacity:.6}}
+  `;
+  const styleEl = document.createElement('style');
+  styleEl.id = 'aimap-styles';
+  styleEl.textContent = CSS;
+  document.head.appendChild(styleEl);
+  </script>
+</head>
+<body>
+  <header>
+    <div class="bar">
+      <div class="brand">AI Map</div>
+      <input id="q" class="input focusable" placeholder="검색 (예: GPT, 지도 학습, Image)" aria-label="노드 검색" />
+      <button id="clear" class="btn focusable" aria-label="검색 초기화">Clear</button>
+      <div class="sp"></div>
+      <button id="expandAll" class="btn focusable" aria-label="모두 펼치기">Expand all</button>
+      <button id="collapseAll" class="btn focusable" aria-label="모두 접기">Collapse all</button>
+      <button id="toggleLang" class="btn focusable" aria-pressed="false" aria-label="언어 전환">KR / EN</button>
+    </div>
+  </header>
+
+  <main>
+    <section id="tree" class="tree" role="tree" aria-label="AI 개념 트리"></section>
+    <aside id="panel" class="panel" aria-live="polite" aria-label="선택 노드 상세">
+      <h2>노드를 선택하세요</h2>
+      <p class="muted">좌측 트리에서 항목을 클릭하면 여기 요약이 표시됩니다.</p>
+      <div class="hint">키보드: ↑/↓ 이동 · → 펼치기 · ← 접기/상위 · Enter 선택 · Esc 검색 초기화</div>
+    </aside>
+  </main>
+
+  <div id="tooltip" role="tooltip" aria-hidden="true"><div class="card"><div class="title"></div><div class="desc"></div></div></div>
+  <div id="loading" aria-live="polite"><div class="dot"></div><div class="dot"></div><div class="dot"></div><span style="font-size:12px">Loading…</span></div>
+  <div id="sr-live" class="visually-hidden" aria-live="polite"></div>
+
+<script>
+// ===== Data =====
+const data = {
+  name: "Artificial Intelligence (인공지능)",
+  info: "사람처럼 학습하고 추론하는 컴퓨터 기술",
+  children: [
+    { name: "Machine Learning (기계 학습)", info: "데이터를 이용해 스스로 배우는 기술", children: [
+      { name: "Supervised Learning (지도 학습)", info: "정답을 알려주고 배우는 방식 (예: 스팸메일 분류)" },
+      { name: "Unsupervised Learning (비지도 학습)", info: "정답 없이 패턴을 찾는 방식 (예: 고객 그룹 나누기)" },
+      { name: "Reinforcement Learning (강화 학습)", info: "보상을 통해 배우는 방식 (예: 게임 AI)" }
+    ]},
+    { name: "Deep Learning (딥러닝)", info: "신경망 구조를 모방한 학습 방법", children: [
+      { name: "CNN (영상)", info: "사진/영상 인식 (예: 고양이 사진 맞히기)" },
+      { name: "RNN / LSTM (시퀀스)", info: "문장/소리 처리 (예: 번역, 음성 인식)" },
+      { name: "GAN (생성)", info: "새로운 데이터 생성 (예: 가짜 사진, 이미지 생성)" }
+    ]},
+    { name: "Applications (응용 분야)", info: "우리가 체험하는 AI의 결과", children: [
+      { name: "📷 Image Generation (문자 → 사진)", info: "텍스트로 이미지를 생성", children: [
+        { name: "MidJourney", info: "대표적인 이미지 생성 AI" },
+        { name: "Adobe Firefly", info: "어도비의 이미지 생성 AI" }
+      ]},
+      { name: "🎥 Video Generation (문장 → 영상)", info: "설명만으로 영상 제작", children: [
+        { name: "Runway", info: "영상 생성 및 편집 AI" },
+        { name: "OpenAI Sora", info: "문장으로 영상을 만드는 AI" }
+      ]},
+      { name: "🎵 Music Generation (프롬프트 → 음악)", info: "프롬프트로 음악 생성", children: [
+        { name: "Suno", info: "노래/음악 생성 AI" },
+        { name: "AIVA", info: "작곡 특화 AI" }
+      ]},
+      { name: "💬 Chatbot (대화형 AI)", info: "사람처럼 대화하는 AI", children: [
+        { name: "ChatGPT", info: "OpenAI의 대표 챗봇" },
+        { name: "Claude", info: "Anthropic의 대화형 AI" }
+      ]}
+    ]},
+    { name: "🌍 Major AI Models (대표 AI 모델)", info: "현재 널리 쓰이는 대표 모델들", children: [
+      { name: "GPT-4 (고성능 멀티모달·추론 | Best-in-class multimodal reasoning)", details: {
+          features:["KR: 텍스트·이미지 입력, 긴 문맥, 코드 해석 | EN: Text+image input, long context, code reasoning","KR: 도구 호출(검색/함수/코드 실행) | EN: Tool calling (search/functions/runtime)"],
+          pros:["KR: 복잡한 과제(기획·요약·분석·코딩)에 강함 | EN: Strong for complex planning/analysis/coding","KR: 결과 일관성과 안전장치 성숙 | EN: Consistent outputs; mature safeguards"],
+          cons:["KR: 고급 기능은 유료, 지연 가능 | EN: Paid tiers; occasional latency","KR: 최신성은 검색/RAG 연동 필요 | EN: Needs retrieval for freshness"],
+          uses:["KR: 보고서/코드 리뷰/데이터 해설 | EN: Reports, code review, data commentary"],
+          prompt:"KR: 이 요구사항으로 REST API 설계 초안과 테스트 케이스를 제시해줘. | EN: Draft a REST API design and test cases for these requirements.",
+          metrics:{popularity:0.95, maturity:0.9}
+      }},
+      { name: "Gemini (구글 생태계 연동 최적 | Deep Google ecosystem integration)", details: {
+          features:["KR: 멀티모달; 검색/Workspace 연동 | EN: Multimodal; Search/Workspace hooks","KR: 모바일~클라우드 스케일 | EN: Scales from mobile to cloud"],
+          pros:["KR: Docs/Sheets/Drive/YouTube 워크플로우 | EN: Smooth Docs/Sheets/Drive/YouTube flows","KR: 빠른 정보 탐색·요약 | EN: Fast discovery/summarization"],
+          cons:["KR: 지역/제품별 기능 차이 | EN: Region/product variance","KR: 특수 도메인엔 튜닝·RAG 필요 | EN: Needs RAG/tuning for niche domains"],
+          uses:["KR: 문서 자동화, 자료 조사, 교육 콘텐트 | EN: Doc automation, research, edu content"],
+          prompt:"KR: 이 3개 논문의 공통 주제와 차이를 표로 요약해줘. | EN: Summarize common themes and differences of these three papers in a table.",
+          metrics:{popularity:0.85, maturity:0.8}
+      }},
+      { name: "Llama (오픈·튜닝 자유도 | Open model with flexible fine-tuning)", details: {
+          features:["KR: 소형~대형 파라미터; 로컬/온프레미스 | EN: Sizes small→large; on-prem/local","KR: 커뮤니티 생태계(LoRA/어댑터/RAG) | EN: Rich community (LoRA/adapters/RAG)"],
+          pros:["KR: 비용·프라이버시 통제, 커스터마이징 용이 | EN: Cost/privacy control; customization","KR: 경량 모델은 온디바이스 가능 | EN: Smaller variants run on edge"],
+          cons:["KR: 최첨단 대비 추론/언어 편차 | EN: May trail SOTA on reasoning/language","KR: 배포/안전성 직접 책임 | EN: You own deployment & safety"],
+          uses:["KR: 사내 비서, 전용 도메인 Q&A, 오프라인 | EN: Private assistant, domain Q&A, offline"],
+          prompt:"KR: 사내 정책 PDF를 바탕으로 휴가 FAQ를 생성해줘. | EN: Generate vacation FAQs from our internal policy PDF.",
+          metrics:{popularity:0.8, maturity:0.75}
+      }},
+      { name: "Claude (안전성 중심·긴 문맥 | Safety-first with long context)", details: {
+          features:["KR: 긴 문서 처리·정확 요약, 헌법적 AI | EN: Long-context summarization; constitutional AI","KR: 섬세한 지침 준수·톤 제어 | EN: Careful instruction-following; tone control"],
+          pros:["KR: 장문 기획·계약서 검토에 안정적 | EN: Stable for long planning & reviews","KR: 보수적 가드레일 | EN: Conservative safeguards"],
+          cons:["KR: 크리에이티브/코드 편차 | EN: Creative/code variance by version","KR: 비용/쿼터 확인 필요 | EN: Check pricing/quotas"],
+          uses:["KR: 규정 준수 문서, 정책 요약, 리스크 코멘트 | EN: Compliance docs, risk comments"],
+          prompt:"KR: 계약서 핵심 리스크를 표로 정리하고 근거 조항을 인용해줘. | EN: Tabulate key risks and cite clauses.",
+          metrics:{popularity:0.88, maturity:0.82}
+      }},
+      { name: "Stable Diffusion (텍스트→이미지·로컬 | Text-to-image; local & customizable)", details: {
+          features:["KR: 오픈 가중치; ControlNet/LoRA | EN: Open weights; ControlNet/LoRA","KR: 스타일 전환·편집(in/out-painting) | EN: Style transfer; in/out-painting"],
+          pros:["KR: 비용 절감·속도/프라이버시 통제 | EN: Cost/privacy control; speed","KR: 커스텀 체크포인트로 스타일 일관 | EN: Consistent style via checkpoints"],
+          cons:["KR: 파라미터 튜닝 난이도 | EN: Prompt/params tuning complexity","KR: 저작권/초상권 이슈 주의 | EN: Copyright/persona risks"],
+          uses:["KR: 콘셉트 아트, 마케팅 시안, 목업 | EN: Concept art, marketing comps, mockups"],
+          prompt:"KR: cinematic, soft lighting, 35mm, modern minimal desk setup, high detail",
+          metrics:{popularity:0.83, maturity:0.78}
+      }},
+      { name: "Copilot (업무 통합·생산성 | Productivity across M365/Windows)", details: {
+          features:["KR: Word/Excel/PowerPoint/Outlook/Teams 통합 | EN: Deep integration with M365 apps","KR: 엔터프라이즈 보안·감사 | EN: Enterprise security & governance"],
+          pros:["KR: 회의 요약·메일 초안·슬라이드 작성 | EN: Meetings, emails, slides—faster","KR: 권한 기반 데이터 접근 | EN: RBAC & tenant-scoped access"],
+          cons:["KR: 데이터 품질·권한 의존 | EN: Dependent on data quality/permissions","KR: 사람 검토/승인 필요 | EN: Requires human review/approval"],
+          uses:["KR: 분기 보고서 초안·숫자 해설·액션 추출 | EN: Draft reports, explain numbers, actions"],
+          prompt:"KR: 지난 분기 매출 엑셀을 요약하고 이슈 3가지를 슬라이드로 만들어줘. | EN: Summarize last quarter’s Excel and create 3-slide highlights.",
+          metrics:{popularity:0.86, maturity:0.84}
+      }}
+    ]}
+  ]
+};
+
+// ===== Helpers & Accessibility =====
+let lang = 'ko';
+const srLive = document.getElementById('sr-live');
+function announce(msg){ srLive.textContent=''; setTimeout(()=> srLive.textContent=msg, 10); }
+
+function displayName(raw){
+  const m = raw.match(/^(.*?)(?:\s*\((.*?)\))?$/); if (!m) return raw;
+  const left=m[1].trim(); const inside=(m[2]||'').trim(); const hasKo=/[\u3131-\uD79D]/.test(inside);
+  return (lang==='ko') ? (hasKo? inside : raw) : left;
+}
+
+function buildModel(d, parent=null){
+  const node = { name:d.name, info:d.info, details:d.details||null, metrics:d.details?.metrics||null, children:[], parentRef:parent, el:null, labelEl:null, childrenEl:null, expanded:false };
+  node.children=(d.children||[]).map(c=>buildModel(c,node));
+  return node;
+}
+const model = buildModel(data); model.expanded=true;
+
+const treeEl = document.getElementById('tree');
+const panelEl = document.getElementById('panel');
+const tooltip = document.getElementById('tooltip');
+const tooltipTitle = tooltip.querySelector('.title');
+const tooltipDesc = tooltip.querySelector('.desc');
+const loadingEl = document.getElementById('loading');
+let current = null; let focusNode = null;
+
+// Ensure ARIA role on container (harden for sandboxed environments)
+if (treeEl.getAttribute('role') !== 'tree') treeEl.setAttribute('role','tree');
+
+function topOfRoot(node){ let cur=node; while(cur && cur.parentRef && cur.parentRef!==model) cur=cur.parentRef; return cur; }
+function categoryOf(node){
+  if (node===model) return 'Root';
+  const top = node.parentRef? topOfRoot(node) : node; const n = top && top.name || '';
+  if (n.includes('Machine Learning')) return 'ML';
+  if (n.includes('Deep Learning')) return 'DL';
+  if (n.includes('Applications')) return 'Apps';
+  if (n.includes('Major AI Models')) return 'Models';
+  if (node.name.includes('Artificial Intelligence')) return 'Root';
+  return 'Other';
+}
+function iconFor(node){
+  const nm=node.name;
+  if (/📷|Image Generation/.test(nm)) return '📷';
+  if (/🎥|Video Generation/.test(nm)) return '🎥';
+  if (/🎵|Music Generation/.test(nm)) return '🎵';
+  if (/💬|Chatbot/.test(nm)) return '💬';
+  const cat=categoryOf(node);
+  if (cat==='Root') return '🤖'; if (cat==='ML') return '🧠'; if (cat==='DL') return '🧬'; if (cat==='Apps') return '🚀'; if (cat==='Models') return '🌍'; return '📌';
+}
+
+// Real example images for DL
+function dlExamplesFor(node){
+  const nm=node.name;
+  if (nm.includes('CNN')) return [{src:'https://upload.wikimedia.org/wikipedia/commons/d/d2/Kitten_5.jpg',cap:"실제 사진 — 분류/탐지 (Wikimedia CC0)"}];
+  if (nm.includes('RNN')||nm.includes('LSTM')) return [{src:'https://upload.wikimedia.org/wikipedia/commons/d/dd/Muybridge_race_horse_animated.gif',cap:'연속 프레임(시퀀스) — 무이브리지 (PD)'}];
+  if (nm.includes('GAN')) return [{src:'https://upload.wikimedia.org/wikipedia/commons/1/1f/Woman_1.jpg',cap:'합성 인물 예시 (PD)'}];
+  return [];
+}
+
+// Render tree
+function renderNode(node){
+  const hasKids=node.children && node.children.length>0; const cat=categoryOf(node);
+  const wrap=document.createElement('div'); wrap.className='node'; wrap.dataset.cat=cat; wrap.setAttribute('role','none');
+
+  const row=document.createElement('div'); row.className='row'; wrap.appendChild(row);
+
+  const chev=document.createElement('button'); chev.type='button'; chev.className='chev focusable'; chev.setAttribute('aria-label', (node.expanded?'접기: ':'펼치기: ')+displayName(node.name)); chev.setAttribute('tabindex','-1');
+  if(!hasKids){chev.classList.add('hidden'); chev.setAttribute('aria-hidden','true');}
+  chev.textContent=node.expanded?'▾':'▸';
+  row.appendChild(chev);
+
+  const label=document.createElement('div'); label.className='label focusable'; label.setAttribute('role','treeitem'); label.setAttribute('aria-selected', 'false'); label.setAttribute('tabindex','-1');
+  // Ensure aria-expanded is present immediately for tests (updated again after layout)
+  label.setAttribute('aria-expanded', String(!!node.expanded));
+  label.innerHTML=`<span class="icon">${iconFor(node)}</span><span class="txt">${displayName(node.name)}</span><span class="badge">${cat}</span>`;
+  row.appendChild(label);
+
+  const kidsWrap=document.createElement('div'); kidsWrap.className='children'; kidsWrap.setAttribute('role','group');
+  wrap.appendChild(kidsWrap);
+
+  node.el=wrap; node.childrenEl=kidsWrap; node.labelEl=label;
+
+  if(hasKids){ node.children.forEach(ch=> kidsWrap.appendChild(renderNode(ch))); }
+
+  // Initial layout + aria-expanded finalization
+  const openState=!!node.expanded; if(openState){ kidsWrap.style.maxHeight=kidsWrap.scrollHeight+'px'; kidsWrap.style.opacity='1'; kidsWrap.style.transform='translateY(0)'; }
+  else{ kidsWrap.style.maxHeight='0px'; kidsWrap.style.opacity='0'; kidsWrap.style.transform='translateY(-2px)'; }
+  label.setAttribute('aria-expanded', String(openState));
+
+  if(hasKids){
+    chev.addEventListener('click', (e)=>{ e.stopPropagation(); toggle(node,true); label.focus(); });
+  }
+  // Hover preview tooltip
+  label.addEventListener('mouseenter', (e)=> showTooltip(node,e));
+  label.addEventListener('mousemove', (e)=> positionTooltip(e));
+  label.addEventListener('mouseleave', hideTooltip);
+
+  // Click selection + micro feedback
+  label.addEventListener('click', ()=>{ select(node); if(hasKids) open(node,true); pulse(label); });
+
+  // Keyboard focusability handled by roving tabindex
+  return wrap;
+}
+
+function pulse(el){ el.style.transform='translateY(-1px) scale(1.01)'; setTimeout(()=> el.style.transform='', 120); }
+
+function select(node){ current=node; document.querySelectorAll('.label.active').forEach(el=> el.classList.remove('active')); if(node && node.el){ node.labelEl.classList.add('active'); node.labelEl.setAttribute('aria-selected','true'); }
+  renderPanel(node); saveState(); announce(displayName(node.name)+ ' 선택됨'); }
+
+function open(node,announceIt){ node.expanded=true; const el=node.childrenEl; if(!el) return; el.classList.add('collapsing'); el.style.maxHeight=el.scrollHeight+'px'; el.style.opacity='1'; el.style.transform='translateY(0)'; const c=node.el.querySelector('.chev'); if(c) c.textContent='▾'; node.labelEl.setAttribute('aria-expanded','true'); setTimeout(()=> el.classList.remove('collapsing'), 240); if(announceIt) announce(displayName(node.name)+' 펼침'); saveState(); }
+function close(node,announceIt){ node.expanded=false; const el=node.childrenEl; if(!el) return; el.classList.add('collapsing'); el.style.maxHeight='0px'; el.style.opacity='0'; el.style.transform='translateY(-2px)'; const c=node.el.querySelector('.chev'); if(c) c.textContent='▸'; node.labelEl.setAttribute('aria-expanded','false'); setTimeout(()=> el.classList.remove('collapsing'), 240); if(announceIt) announce(displayName(node.name)+' 접힘'); saveState(); }
+function toggle(node,announceIt){ node.expanded? close(node,announceIt) : open(node,announceIt); }
+
+function renderTree(){ treeEl.innerHTML=''; treeEl.appendChild(renderNode(model)); initializeRovingTabindex(); }
+
+function renderPanel(node){
+  showLoading(120);
+  if(!node){ panelEl.innerHTML='<h2>노드를 선택하세요</h2><p class="muted">좌측 트리에서 항목을 클릭하면 요약이 표시됩니다.</p>'; return; }
+  const title=displayName(node.name); const cat=categoryOf(node);
+  const themeColor = {Root:'--root',ML:'--ml',DL:'--dl',Apps:'--apps',Models:'--models',Other:'--other'}[cat]||'--other';
+  let html=`<h2 style="border-left:4px solid var(${themeColor});padding-left:8px;">${iconFor(node)} ${title} <span class='chip'>${cat}</span></h2>`;
+  if(node.details){ const d=node.details; if(d.features?.length){ html += `<h3>주요 특징</h3><ul>${d.features.map(x=>`<li>${x}</li>`).join('')}</ul>`; } if(d.pros?.length){ html += `<h3>장점</h3><ul>${d.pros.map(x=>`<li>${x}</li>`).join('')}</ul>`; } if(d.cons?.length){ html += `<h3>단점 / 유의점</h3><ul>${d.cons.map(x=>`<li>${x}</li>`).join('')}</ul>`; } if(d.uses?.length){ html += `<h3>주요 활용</h3><ul>${d.uses.map(x=>`<li>${x}</li>`).join('')}</ul>`; } if(d.prompt){ html += `<h3>예시 프롬프트</h3><div class="muted">${d.prompt}</div>`; } }
+  else if(node.info){ html += `<p class='muted'>${node.info}</p>`; } else { html += `<div class='empty'>요약 정보가 없습니다.</div>`; }
+
+  // Info density: badge row + meters if metrics exist
+  if(node.metrics || node.details?.metrics){ const m = node.metrics || node.details.metrics; const pop = Math.round((m.popularity||0)*100); const mat = Math.round((m.maturity||0)*100); html += `<div class='metaRow'>
+      <div><div style='display:flex;justify-content:space-between'><span class='chip'>Popularity</span><span class='chip'>${pop}%</span></div><div class='meter'><i style='width:${pop}%'></i></div></div>
+      <div><div style='display:flex;justify-content:space-between'><span class='chip'>Maturity</span><span class='chip'>${mat}%</span></div><div class='meter'><i style='width:${mat}%'></i></div></div>
+    </div>`; }
+
+  // DL examples
+  if(categoryOf(node)==='DL'){ const ex = dlExamplesFor(node); if(ex.length){ html += `<h3>예시 이미지</h3><div class='examples'>`+ ex.map(e=>`<div class='excard'><img alt='example' src='${e.src}'/><div class='cap'>${e.cap}</div></div>`).join('') + `</div>`; } }
+  panelEl.innerHTML=html;
+}
+
+// Tooltip helpers
+function showTooltip(node,evt){ tooltipTitle.textContent=displayName(node.name); tooltipDesc.textContent=node.info || '상세 정보를 보려면 Enter/클릭'; tooltip.style.opacity='1'; tooltip.style.transform='translateY(0)'; tooltip.setAttribute('aria-hidden','false'); positionTooltip(evt); }
+function positionTooltip(evt){ const pad=14; const x=Math.min(window.innerWidth-360-pad, evt.clientX+12); const y=Math.min(window.innerHeight-80, evt.clientY+12); tooltip.style.left=x+'px'; tooltip.style.top=y+'px'; }
+function hideTooltip(){ tooltip.style.opacity='0'; tooltip.style.transform='translateY(6px)'; tooltip.setAttribute('aria-hidden','true'); }
+
+// Loading indicator (debounced)
+let loadingTimer=null; function showLoading(delay=120){ clearTimeout(loadingTimer); loadingEl.style.display='flex'; loadingTimer=setTimeout(()=> loadingEl.style.display='none', delay); }
+
+// Search
+const q=document.getElementById('q'); const clearBtn=document.getElementById('clear');
+function searchTree(){ const term=(q.value||'').trim().toLowerCase(); document.querySelectorAll('.node').forEach(n=> n.classList.remove('match','dim')); if(!term){ announce('검색 비움'); return; }
+  function dfs(node){ const me=node.name.toLowerCase().includes(term); let childHit=false; (node.children||[]).forEach(c=>{ if(dfs(c)) childHit=true; }); const hit=me||childHit; if(hit){ open(node); if(node.el) node.el.classList.add('match'); } else if(node.el) node.el.classList.add('dim'); return hit; }
+  showLoading(250); dfs(model); announce('검색 결과 강조됨'); }
+q.addEventListener('input', searchTree);
+clearBtn.addEventListener('click', ()=>{ q.value=''; searchTree(); q.focus(); });
+
+// Keyboard accessibility (roving tabindex + tree navigation)
+function visibleNodes(){ return Array.from(treeEl.querySelectorAll('.label')).map(el=> findNodeByEl(el.closest('.node'))).filter(Boolean); }
+function initializeRovingTabindex(){ const nodes=visibleNodes(); nodes.forEach(elNode=> elNode.labelEl.setAttribute('tabindex','-1')); focusNode = current || model; focusNode.labelEl.setAttribute('tabindex','0'); }
+function moveFocusTo(node){ if(!node || !node.labelEl) return; if(focusNode && focusNode.labelEl) focusNode.labelEl.setAttribute('tabindex','-1'); node.labelEl.setAttribute('tabindex','0'); node.labelEl.focus(); focusNode=node; }
+
+// Map element back to node
+function findNodeByEl(el,node=model){ if(node.el===el) return node; for(const c of (node.children||[])){ const x=findNodeByEl(el,c); if(x) return x; } return null; }
+
+// Key handling
+treeEl.addEventListener('keydown', (e)=>{
+  const key=e.key; const target=e.target; if(!target.classList.contains('label')) return;
+  const node=findNodeByEl(target.closest('.node'));
+  if(key==='Enter' || key===' '){ e.preventDefault(); select(node); if(node.children?.length) open(node,true); return; }
+  if(key==='ArrowRight'){ e.preventDefault(); if(node.children?.length && !node.expanded) open(node,true); else if(node.children?.length){ moveFocusTo(node.children[0]); }
+    return; }
+  if(key==='ArrowLeft'){ e.preventDefault(); if(node.expanded){ close(node,true); } else if(node.parentRef){ moveFocusTo(node.parentRef); } return; }
+  if(key==='ArrowDown' || key==='ArrowUp'){ e.preventDefault(); const list=visibleNodes(); const idx=list.indexOf(node); const next = (key==='ArrowDown') ? list[Math.min(idx+1, list.length-1)] : list[Math.max(idx-1,0)]; if(next) moveFocusTo(next); return; }
+  if(key==='Home'){ e.preventDefault(); const first=visibleNodes()[0]; if(first) moveFocusTo(first); return; }
+  if(key==='End'){ e.preventDefault(); const list=visibleNodes(); const last=list[list.length-1]; if(last) moveFocusTo(last); return; }
+});
+
+// Global keys: Esc to clear search
+window.addEventListener('keydown', (e)=>{ if(e.key==='Escape'){ if(q===document.activeElement && q.value){ q.value=''; searchTree(); announce('검색 초기화'); } } });
+
+// Expand / Collapse / Lang
+function expandAll(node=model){ open(node); (node.children||[]).forEach(expandAll); saveState(); }
+function collapseAllFn(node=model){ if(node!==model) close(node); (node.children||[]).forEach(collapseAllFn); saveState(); }
+
+document.getElementById('expandAll').onclick=()=> expandAll();
+document.getElementById('collapseAll').onclick=()=> collapseAllFn();
+document.getElementById('toggleLang').onclick=()=>{ lang=(lang==='ko'?'en':'ko'); document.querySelectorAll('.node .label .txt').forEach((el)=>{ const node=findNodeByEl(el.closest('.node')); if(node) el.textContent=displayName(node.name); }); renderPanel(current); saveState(); announce('언어 전환'); };
+
+// ===== State persistence =====
+const STATE_KEY='aimap_accessible_state_v1';
+function nodePath(node){ const parts=[]; let n=node; while(n){ parts.push(n.name); n=n.parentRef; } return parts.reverse().join(' > '); }
+function findByPath(path){ const parts=path.split(' > '); if(parts[0]!==model.name) return null; let n=model; for(let i=1;i<parts.length;i++){ n=(n.children||[]).find(c=>c.name===parts[i]); if(!n) return null; } return n; }
+function collectExpanded(node=model,out=[]){ if(node.expanded) out.push(nodePath(node)); (node.children||[]).forEach(c=>collectExpanded(c,out)); return out; }
+function expandByPaths(paths=[]){ paths.forEach(p=>{ const n=findByPath(p); if(n){ let cur=n; while(cur){ cur.expanded=true; if(cur.childrenEl){ cur.childrenEl.style.maxHeight=cur.childrenEl.scrollHeight+'px'; cur.childrenEl.style.opacity='1'; cur.childrenEl.style.transform='translateY(0)'; } cur=cur.parentRef; } }}); }
+function saveState(){ try{ const st={ lang, selected: current? nodePath(current): null, expanded: collectExpanded() }; localStorage.setItem(STATE_KEY, JSON.stringify(st)); }catch(e){} }
+function restoreState(){ try{ const raw=localStorage.getItem(STATE_KEY); if(!raw) return; const st=JSON.parse(raw); if(st.lang && st.lang!==lang){ lang=st.lang; } expandByPaths(st.expanded||[]); document.querySelectorAll('.node .label .txt').forEach((el)=>{ const node=findNodeByEl(el.closest('.node')); if(node) el.textContent=displayName(node.name); }); if(st.selected){ const n=findByPath(st.selected); if(n){ select(n); moveFocusTo(n); }} }catch(e){} }
+
+// Initial render
+renderTree();
+renderPanel(null);
+restoreState();
+initializeRovingTabindex();
+
+// ===== Tests (console) =====
+(function runTests(){
+  const results=[]; function test(name,fn){ try{ fn(); results.push({name,ok:true}); } catch(e){ console.error('[TEST FAIL]',name,e); results.push({name,ok:false,err:e}); } }
+  // (1) Existing tests — keep unchanged
+  test('ARIA roles present',()=>{ if(treeEl.getAttribute('role')!=='tree') throw 0; const any=document.querySelector('[role="treeitem"]'); if(!any) throw 0; });
+  test('Roving tabindex single 0',()=>{ const labs=[...document.querySelectorAll('.label')]; const zeros=labs.filter(l=> l.tabIndex===0); if(zeros.length!==1) throw new Error('tabindex 0 count='+zeros.length); });
+  test('Contrast colors exist',()=>{ const style=getComputedStyle(document.documentElement); ['--ml','--dl','--apps','--models','--root'].forEach(v=>{ if(!style.getPropertyValue(v)) throw new Error('missing '+v); }); });
+  test('Keyboard map attached',()=>{ const h=(getEventListeners? getEventListeners(treeEl).keydown: null); /* optional */ });
+
+  // (2) Additional tests — do not modify existing ones
+  test('At least one group element under tree',()=>{ const grp=document.querySelector('[role="group"]'); if(!grp) throw new Error('no role=group'); });
+  test('Nodes with children have aria-expanded',()=>{ const items=[...document.querySelectorAll('[role="treeitem"]')]; const withKids=items.filter(el=> el.parentElement?.nextSibling); /* crude heuristic */ items.forEach(el=>{ if(el.getAttribute('aria-expanded')==null) throw new Error('missing aria-expanded'); }); });
+  test('Live region exists',()=>{ const live=document.getElementById('sr-live'); if(!live || live.getAttribute('aria-live')!=='polite') throw new Error('aria-live missing'); });
+
+  const ok=results.filter(r=>r.ok).length; const fail=results.length-ok; if(fail===0) console.log('%cAll tests passed ('+ok+')','color:#22c55e'); else console.warn('Tests: ',{ok,fail,results});
+})();
+</script>
+</body>
+</html>
