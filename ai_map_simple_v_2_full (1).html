@@ -1,0 +1,764 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AI Map — Applications (인기/최신 포함) v2</title>
+  <style>
+    :root{
+      --bg:#ffffff;
+      --panel:#ffffff;
+      --card:#ffffff;
+      --muted:#6b7280;
+      --text:#111827;
+      --accent:#2563eb; /* blue-600 */
+      --accent-2:#7c3aed; /* violet-600 */
+      --green:#10b981; /* emerald-500 */
+      --red:#ef4444; /* red-500 */
+      --focus:#111827;
+      --focus-bg: rgba(17,24,39,.12);
+      --border: #e5e7eb;
+      --shadow: 0 4px 12px rgba(0,0,0,.06);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;background:#fff;color:var(--text);font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Helvetica,Apple SD Gothic Neo,Malgun Gothic,Apple Color Emoji,Noto Color Emoji,Segoe UI Emoji;}
+    header{position:sticky;top:0;z-index:5;background:#fff;box-shadow:0 1px 0 rgba(0,0,0,.04);border-bottom:1px solid var(--border)}
+    header .wrap{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:12px 16px;max-width:1200px;margin:0 auto}
+    .brand{display:flex;align-items:center;gap:10px}
+    .logo{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--accent-2));box-shadow:var(--shadow)}
+    h1{font-size:18px;margin:0;font-weight:700;letter-spacing:.2px}
+    .controls{display:flex;gap:10px;align-items:center}
+    .controls input[type="search"]{background:var(--card);border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:10px;min-width:220px;outline:none}
+    .btn{background:var(--card);border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:10px;cursor:pointer}
+    .btn[aria-pressed="true"]{background:linear-gradient(180deg,#1a2140,#151b32);border-color:#2a335b}
+    .btn:hover{border-color:#3a4468}
+
+    main{max-width:1200px;margin:12px auto;display:grid;gap:12px;grid-template-columns: 1fr min(42%, 440px);align-items:start}
+    nav.tree{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:6px 8px;box-shadow:var(--shadow);min-height:70vh}
+    .panel{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:14px;box-shadow:var(--shadow)}
+
+    /* Tree nodes */
+    .node{padding-left:8px}
+    .kids{margin-left:16px;border-left:1px dashed var(--border);padding:12px 8px 8px 12px;border-radius:12px;background:transparent}
+    .label{display:inline-flex;align-items:center;gap:8px;padding:10px 12px;border-radius:12px;outline:none;width:fit-content;max-width:100%}
+    .label[tabindex="0"]{box-shadow:0 0 0 2px var(--focus-bg);}
+    .label:focus{box-shadow:0 0 0 2px var(--focus-bg);}    
+    .chev{width:22px;height:22px;display:inline-grid;place-items:center;border-radius:6px;border:1px solid var(--border);background:var(--card);cursor:pointer}
+    .icon{width:22px;height:22px;display:inline-grid;place-items:center;border-radius:6px;border:1px solid var(--border);background:var(--card);overflow:hidden}
+    .icon img{width:100%;height:100%;display:block}
+
+    .txt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    /* ➕ 카테고리(자식이 있는 노드) 텍스트만 테두리(글자 길이만큼) */
+    .node.has-children > .label{ gap:8px; padding:6px 0; }
+    .node.has-children > .label .txt{ display:inline-block; flex:0 0 auto; padding:6px 10px; border:2px solid #fff; border-radius:10px; background:transparent; white-space:nowrap; overflow:visible; text-overflow:clip; }
+    .badge{font-size:11px;color:#fff;background:#263e7a;padding:3px 6px;border-radius:999px;border:1px solid #3f5aa3}
+    .muted{color:var(--muted)}
+    .match .txt{color:#fff}
+    .dim .txt{color:#9ca3af}
+
+/* === Hover interactions (category + leaf) === */
+.label{ cursor:pointer; transition:background-color .15s, box-shadow .15s, transform .02s; }
+/* 카테고리 칩 hover: 칩 배경과 안쪽 그림자 */
+.label[aria-expanded]:hover .txt{ background:rgba(17,24,39,.06); box-shadow:0 0 0 3px rgba(17,24,39,.06) inset; }
+/* 리프 hover: 라벨 전체에 은은한 배경 */
+.label:not([aria-expanded]):hover{ background:rgba(17,24,39,.06); }
+/* 클릭 시 살짝 눌리는 효과 */
+.label:active{ transform:translateY(1px); }
+/* 패널 로고 src가 비어있을 때 이미지 숨김 */
+.panel .title img[src=""]{ display:none; }
+
+    /* Theme colors per top category */
+    .theme-image{ --th:#4ea1ff; --th-bg: rgba(78,161,255,.10); --th-bd: rgba(78,161,255,.40); }
+    .theme-video{ --th:#9b6bff; --th-bg: rgba(155,107,255,.10); --th-bd: rgba(155,107,255,.40); }
+    .theme-music{ --th:#43d1a0; --th-bg: rgba(67,209,160,.10); --th-bd: rgba(67,209,160,.40); }
+    .theme-chat{  --th:#ff8fa3; --th-bg: rgba(255,143,163,.10); --th-bd: rgba(255,143,163,.40); }
+    [class*="theme-"] > .label{ border:none; background:#fff; }
+    [class*="theme-"] .kids{ border-left:2px solid var(--th-bd); background: rgba(255,255,255,.01); }
+    [class*="theme-"] .chev{ border-color: var(--th-bd); background: linear-gradient(180deg, rgba(255,255,255,.02), rgba(0,0,0,.06)); }
+    .depth-2 > .label{ padding:14px 14px; border-radius:14px; }
+    .depth-2 .kids{ margin-top:6px; padding:12px 10px 10px 14px; border-radius:12px; }
+
+    /* Panel */
+    .panel .title{display:flex;align-items:center;justify-content:space-between;gap:10px}
+    .panel .title img{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#1c2440,#151b2f)}
+    .panel .title .meta{display:flex;align-items:center;gap:10px}
+    .panel .title .visit{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid #111827;border-radius:10px;color:#111827;text-decoration:none;background:transparent}
+    .panel .title .visit:hover{background:rgba(17,24,39,.06)}
+    .panel h2{margin:0 0 6px 0;font-size:20px}
+    .panel h3{margin:18px 0 8px 0;font-size:14px;text-transform:uppercase;letter-spacing:.6px;color:#9aa6c6}
+    .grid{display:grid;gap:8px;grid-template-columns: 1fr 1fr}
+    .kv{display:flex;gap:8px;align-items:center}
+    .kv b{min-width:92px;color:#c9d4f3;font-weight:600}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px}
+    ul{margin:6px 0 0 18px}
+    li{margin:2px 0}
+
+    .meter{height:8px;background:#0f1425;border:1px solid var(--border);border-radius:999px;overflow:hidden}
+    .meter > span{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-2));}
+
+    footer{max-width:1200px;margin:16px auto 40px auto;color:var(--muted);font-size:12px;padding:0 8px}
+
+    .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+
+    @media (max-width: 900px){
+      main{display:block}
+      .panel{margin-top:14px}
+    }
+  
+/* === Interaction & Category Chip (text-length border + hover) === */
+.label[aria-expanded]{ display:inline-flex; gap:8px; padding:6px 0; width:auto; max-width:100%; }
+.label[aria-expanded] .txt{ display:inline-flex; flex:0 0 auto; width:max-content; max-width:100%; padding:6px 10px; border:2px solid #fff; border-radius:10px; background:transparent; white-space:nowrap; overflow:visible; text-overflow:clip; transition: background-color .15s, border-color .15s, box-shadow .15s, color .15s; }
+.label[aria-expanded]:hover .txt{ background:rgba(255,255,255,.10); box-shadow:0 0 0 3px rgba(255,255,255,.06) inset; }
+.label{ cursor:pointer; transition:background-color .15s, box-shadow .15s, transform .02s; }
+.label:not([aria-expanded]):hover{ background:rgba(255,255,255,.06); }
+.label:active{ transform:translateY(1px); }
+
+/* === Depth tints === */
+.depth-2 > .label[aria-expanded] .txt{ background: rgba(255,255,255,.06); }
+
+/* === Header prominence === */
+header{ box-shadow: 0 6px 18px rgba(0,0,0,.25); }
+
+/* === Panel monospace prompt === */
+.kv b{ color: var(--kv-label, #c9d4f3); }
+.panel .card code{ display:block; font-family: ui-monospace,SFMono-Regular,Menlo,monospace; background: rgba(255,255,255,.04); border:1px solid var(--border); border-radius:8px; padding:8px; color: var(--text); }
+.panel .title img[src=""]{ display:none; }
+</style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <div class="brand">
+        <div class="logo" aria-hidden="true"></div>
+        <h1>AI Map — Applications</h1>
+        <span class="badge" id="resultCount">0</span>
+      </div>
+      <div class="controls">
+        <button class="btn" id="toggleLang" aria-pressed="false" title="Toggle language">한국어</button>
+        <input id="q" type="search" placeholder="검색 / Search" />
+        <button class="btn" id="expandAll">Expand</button>
+        <button class="btn" id="collapseAll">Collapse</button>
+        <button class="btn" id="resetState">Reset</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <nav id="tree" class="tree" role="tree" aria-label="AI categories"></nav>
+    <section id="panel" class="panel" aria-live="polite"></section>
+  </main>
+
+  <footer>
+    ※ 카탈로그 데이터는 샘플입니다. 실제 상용 조건/정책/라이선스는 각 서비스의 공식 문서를 확인하세요.
+  </footer>
+
+  <div id="live" class="sr-only" role="status" aria-live="polite"></div>
+
+  <script>
+  // ===================== i18n helpers =====================
+  let lang = (localStorage.getItem('aimap.v2.lang')||'ko');
+  const t = (kr,en)=>`KR: ${kr} | EN: ${en}`;
+  function pickLang(s){
+    if(s==null) return '';
+    const parts=String(s).split('|');
+    let KR=null,EN=null; 
+    for(const p of parts){
+      const x=p.trim();
+      if(/^KR:/i.test(x)) KR=x.replace(/^KR:\s*/i,'').trim();
+      else if(/^EN:/i.test(x)) EN=x.replace(/^EN:\s*/i,'').trim();
+    }
+    return (lang==='ko' ? (KR||EN||String(s)) : (EN||KR||String(s)));
+  }
+
+  // ===================== Data =====================
+  // Theme icons (inline SVGs as data URIs)
+  const themeIcons = {
+    image: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect x="8" y="18" width="48" height="30" rx="6" fill="%234ea1ff" fill-opacity=".12" stroke="%234ea1ff"/><circle cx="36" cy="33" r="10" fill="%234ea1ff"/><rect x="14" y="12" width="12" height="8" rx="2" fill="%234ea1ff"/></svg>',
+    video: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect x="8" y="16" width="48" height="32" rx="6" fill="%239b6bff" fill-opacity=".12" stroke="%239b6bff"/><polygon points="28,23 44,32 28,41" fill="%239b6bff"/></svg>',
+    music: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect x="36" y="14" width="4" height="24" fill="%2343d1a0"/><rect x="40" y="14" width="16" height="6" fill="%2343d1a0"/><circle cx="28" cy="42" r="7" fill="%2343d1a0"/></svg>',
+    chat:  'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect x="8" y="14" width="48" height="30" rx="8" fill="%23ff8fa3" fill-opacity=".12" stroke="%23ff8fa3"/><path d="M16 50l10-8H40" stroke="%23ff8fa3" stroke-width="3" fill="none"/></svg>'
+  };
+  let uid=0;const genId=()=>`n_${++uid}`;
+  const LINKS = {
+    'Midjourney':'https://www.midjourney.com',
+    'Adobe Firefly':'https://firefly.adobe.com',
+    'DALL·E 3':'https://openai.com/dall-e-3',
+    'Stable Diffusion XL':'https://stability.ai',
+    'Ideogram':'https://ideogram.ai',
+    'Leonardo AI':'https://leonardo.ai',
+    'Playground v2.5':'https://playground.com',
+    'FLUX.1':'https://blackforestlabs.ai',
+    'Runway':'https://runwayml.com',
+    'Pika':'https://pika.art',
+    'Synthesia':'https://www.synthesia.io',
+    'CapCut AI Editor':'https://www.capcut.com',
+    'OpenAI Sora':'https://openai.com/sora',
+    'Luma Dream Machine':'https://lumalabs.ai/dream-machine',
+    'Kling AI':'',
+    'Stable Video Diffusion':'https://stability.ai',
+    'Suno':'https://suno.com',
+    'Udio':'https://www.udio.com',
+    'AIVA':'https://www.aiva.ai',
+    'Beatoven.ai':'https://www.beatoven.ai',
+    'Stable Audio':'https://www.stableaudio.com',
+    'MusicGen':'https://github.com/facebookresearch/audiocraft',
+    'AudioCraft':'https://github.com/facebookresearch/audiocraft',
+    'Riffusion 2':'https://www.riffusion.com',
+    'ChatGPT':'https://chatgpt.com',
+    'Claude':'https://claude.ai',
+    'Gemini':'https://gemini.google.com',
+    'Microsoft Copilot':'https://copilot.microsoft.com',
+    'Perplexity':'https://www.perplexity.ai',
+    'Grok':'https://x.ai',
+    'Pi (Inflection)':'https://pi.ai',
+    'Meta AI':'https://www.meta.ai'
+  };
+  const data = {
+    id: genId(),
+    name: 'Applications',
+    info: t('실전 활용 중심의 AI 도구 모음','Collection of practical AI tools'),
+    expanded: true,
+    children: [
+      {
+        id: genId(),
+        name: 'Image Generation',
+        logo: themeIcons.image,
+        info: t('이미지 생성/편집 모델','Image generation & editing'),
+        expanded: true,
+        children:[
+          { id: genId(), name: '🔥 인기 있는 AI (Popular)', info: t('많이 쓰이고 검증된 이미지 생성기','Widely-used, battle-tested image generators'), expanded:true, children:[
+            leaf('Midjourney', t('디스코드 기반 고품질 이미지 생성','High-quality image generation on Discord'), {
+              vendor:'Midjourney, Inc.', pricing:t('구독제','Subscription'), platforms:'Web/Discord', languages:'EN',
+              features:[ t('풍부한 스타일·재질 표현','Rich style & texture control'), t('업스케일/리믹스 워크플로','Upscale & remix workflows'), t('대규모 커뮤니티','Massive community') ],
+              popularity:t('짧은 학습곡선과 높은 품질로 크리에이터 채택률이 높음','High perceived quality and short learning curve'),
+              pros:[ t('품질 대비 빠른 반복','Fast iteration for quality'), t('시각 일관성 우수','Good style consistency') ],
+              cons:[ t('세밀한 타이포 한계','Text rendering limits'), t('오픈 가중치 아님','Closed weights') ],
+              uses:[ t('콘셉트 아트·무드보드','Concept art & moodboards'), t('마케팅 시안·썸네일','Marketing comps & thumbnails') ],
+              prompt: t('ultra-detailed, cinematic lighting, product hero shot, white background','ultra-detailed, cinematic lighting, product hero shot, white background'),
+              trends:t('v6/v7 계열로 사실감과 텍스처 향상','v6/v7 improve realism and textures'),
+              metrics:{popularity:.92,maturity:.88}
+            }),
+            leaf('Adobe Firefly', t('Adobe CC와 긴밀 통합','Deep integration with Adobe CC'),{
+              vendor:'Adobe', pricing:t('크레딧 기반 + CC 번들','Credits + bundled with CC'), platforms:'Web/CC apps', languages:'Multi',
+              features:[ t('상업 사용 가드레일','Commercial-use guardrails'), t('PS/AI 텍스트 효과·리터치','Photoshop/Illustrator text effects & retouch') ],
+              popularity:t('크리에이티브 클라우드 워크플로에 자연스러운 접목','Fits into existing CC workflows'),
+              pros:[ t('브랜드/소속사 정책 친화','Enterprise-friendly policies'), t('문서/벡터 도구와 연동','Integrates with PS/AI') ],
+              cons:[ t('크레딧 소모 관리 필요','Credit management required') ],
+              uses:[ t('브랜딩·소셜 크리에이티브','Branding & social creatives'), t('사진 보정·합성','Photo retouch & compositing') ],
+              prompt:t('paper-cut style, brand color palette, minimal flat icon set','paper-cut style, brand color palette, minimal flat icon set'),
+              metrics:{popularity:.86,maturity:.85}
+            }),
+            leaf('DALL·E 3', t('텍스트-정확도에 강함','Strong text fidelity; ChatGPT integration'),{
+              vendor:'OpenAI', pricing:t('사용량 기반','Usage-based'), platforms:'Web/API', languages:'Multi',
+              features:[ t('상세 프롬프트 해석','Detailed prompt following'), t('ChatGPT에서 직접 사용','Use directly in ChatGPT') ],
+              popularity:t('텍스트/로고 유사 표현에 강점','Strong for text-like graphics'),
+              pros:[ t('설명 충실도 높음','High instruction fidelity') ],
+              cons:[ t('일부 상업/정책 제한','Some usage policy limits') ],
+              uses:[ t('일러스트·스토리보드','Illustrations & storyboards'), t('교육용 시각자료','Educational visuals') ],
+              prompt:t('storybook illustration, warm pastel palette, clean line art','storybook illustration, warm pastel palette, clean line art'),
+              metrics:{popularity:.88,maturity:.82}
+            }),
+            leaf('Stable Diffusion XL', t('오픈 가중치·로컬 커스터마이즈','Open weights; local customization'),{
+              vendor:'Stability AI + community', pricing:t('오픈 & 호스팅 비용','Open & infra cost'), platforms:'Local/Web', languages:'—',
+              features:[ t('ControlNet/LoRA 생태계','ControlNet/LoRA ecosystem'), t('프라이버시/비용 통제','Privacy & cost control') ],
+              popularity:t('기업/연구에서 온프레미스 수요 높음','Favored for on-prem & research'),
+              pros:[ t('커스터마이즈 자유도','Customization freedom') ],
+              cons:[ t('세팅 복잡도','Setup complexity') ],
+              uses:[ t('브랜드 일관 스타일 제작','Consistent brand style'), t('온프레미스 생성','On-prem generation') ],
+              prompt:t('photorealistic portrait, softbox lighting, 85mm, shallow DOF','photorealistic portrait, softbox lighting, 85mm, shallow DOF'),
+              metrics:{popularity:.83,maturity:.80}
+            })
+          ]},
+          { id: genId(), name:'🆕 최신 AI (Latest)', info:t('최근 주목받는 이미지 생성기','New/fast-rising image generators'), expanded:true, children:[
+            leaf('Ideogram', t('텍스트 렌더링·포스터/로고 강점','Strong text rendering; posters/logos'),{
+              vendor:'Ideogram AI', pricing:t('프리미엄 플랜','Premium plans'), platforms:'Web', languages:'EN',
+              features:[ t('간판/패키지용 타이포','Typography for signage/packaging'), t('간단한 UI','Simple UI') ],
+              pros:[ t('텍스트 가독성 우수','Legible text'), t('포스터/티셔츠에 적합','Great for poster/merch') ],
+              cons:[ t('고급 파라미터 제한','Fewer advanced knobs') ],
+              uses:[ t('티셔츠·포스터 디자인','T-shirt/posters'), t('로고 아이데이션','Logo ideation') ],
+              prompt:t('bold typography poster, high contrast, clean grid layout, legible text','bold typography poster, high contrast, clean grid layout, legible text'),
+              metrics:{popularity:.70,maturity:.60}
+            }),
+            leaf('Leonardo AI', t('템플릿·파라미터 프리셋 풍부','Rich templates & presets'),{
+              vendor:'Leonardo AI', pricing:t('프리미엄 플랜','Premium plans'), platforms:'Web', languages:'EN',
+              features:[ t('배치 생성·에셋 관리','Batch generation & asset mgmt'), t('게임·제품 렌더 파이프라인','Game/prop pipelines') ],
+              uses:[ t('게임 에셋 콘셉트','Game asset concepts'), t('제품 렌더 목업','Product render mockups') ],
+              prompt:t('isometric game prop, PBR materials, soft rim light, 4k','isometric game prop, PBR materials, soft rim light, 4k'),
+              metrics:{popularity:.68,maturity:.62}
+            }),
+            leaf('Playground v2.5', t('사진풍 사실감·리터칭','Photorealism & retouching'),{
+              vendor:'Playground', pricing:t('프리미엄 플랜','Premium plans'), platforms:'Web', languages:'EN',
+              features:[ t('브러시 편집·변형','Brush edit & variations'), t('웹 UI 최적화','Snappy web UI') ],
+              uses:[ t('인물/제품 포토룩','People/product photolooks'), t('배경 확장·리터치','Outpainting & retouch') ],
+              prompt:t('studio portrait, color gel lighting, natural skin texture','studio portrait, color gel lighting, natural skin texture'),
+              metrics:{popularity:.64,maturity:.58}
+            }),
+            leaf('FLUX.1', t('세밀 디테일·다양한 스타일','Crisp details; versatile styles'),{
+              vendor:'Black Forest Labs', pricing:t('프리미엄/오픈 혼합','Mixed'), platforms:'Web/API', languages:'EN',
+              features:[ t('하이파이 샤프니스','High-fidelity sharpness'), t('속도/품질 밸런스','Balanced speed/quality') ],
+              uses:[ t('제품·패션 룩북','Product/fashion lookbooks'), t('키 비주얼','Key visuals') ],
+              prompt:t('fashion editorial, hard light, color blocking, magazine cover','fashion editorial, hard light, color blocking, magazine cover'),
+              metrics:{popularity:.62,maturity:.55}
+            })
+          ]}
+        ]
+      },
+      {
+        id: genId(),
+        name: 'Video Generation',
+        logo: themeIcons.video,
+        info: t('텍스트/이미지에서 영상 생성','Video generation from text/images'),
+        expanded: true,
+        children:[
+          { id: genId(), name:'🔥 인기 있는 AI (Popular)', info:t('제작 현장에서 많이 쓰이는 영상 도구','Widely-used video gen/edit tools'), expanded:true, children:[
+            leaf('Runway', t('텍스트→영상·편집·트래킹','Text-to-video, editing & tracking'),{
+              vendor:'Runway', pricing:t('크레딧/구독','Credits/Subscription'), platforms:'Web', languages:'EN',
+              features:[ t('Gen 기반 생성·편집','Gen-based generation & editing'), t('객체 제거/마스크','Smart object removal/masking') ],
+              uses:[ t('B-roll 합성·모션 그래픽','B-roll, motion GFX'), t('프리비즈','Previsualization') ],
+              prompt:t('cinematic dolly shot of city at dusk, shallow depth, 8s','cinematic dolly shot of city at dusk, shallow depth, 8s'),
+              metrics:{popularity:.90,maturity:.85}
+            }),
+            leaf('Pika', t('짧은 영상·밈 제작 특화','Short-form & meme-friendly'),{
+              vendor:'Pika Labs', pricing:t('프리미엄','Premium'), platforms:'Web', languages:'EN',
+              features:[ t('이미지→영상 변환','Image-to-video'), t('스타일 전환','Style transfer') ],
+              uses:[ t('소셜 숏폼·밈','Shorts & memes'), t('실험적 모션 테스트','Motion tests') ],
+              prompt:t('looping neon sign flicker, 4s seamless loop','looping neon sign flicker, 4s seamless loop'),
+              metrics:{popularity:.82,maturity:.75}
+            }),
+            leaf('Synthesia', t('아바타 프레젠터 영상','Avatar presenter videos'),{
+              vendor:'Synthesia', pricing:t('구독','Subscription'), platforms:'Web', languages:'Multi',
+              features:[ t('다국어 TTS·자막','Multilingual TTS & captions'), t('템플릿 기반 제작','Template-driven') ],
+              uses:[ t('교육·온보딩','Training & onboarding'), t('세일즈 데모','Sales demos') ],
+              prompt:t('studio presenter, clean background, 1080p','studio presenter, clean background, 1080p'),
+              metrics:{popularity:.80,maturity:.82}
+            }),
+            leaf('CapCut AI Editor', t('간편 편집·생성 기능','Easy editing with AI'),{
+              vendor:'ByteDance', pricing:t('무료+유료','Free+Paid'), platforms:'Web/App', languages:'Multi',
+              features:[ t('자동 컷/자막/비트 매칭','Auto cut/captions/beat match'), t('효과·템플릿 라이브러리','Effects & templates') ],
+              uses:[ t('SNS 광고·UGC','SNS ads & UGC'), t('하이라이트 컷','Highlight reels') ],
+              prompt:t('product montage, upbeat pacing, quick cuts to the beat','product montage, upbeat pacing, quick cuts to the beat'),
+              metrics:{popularity:.78,maturity:.80}
+            })
+          ]},
+          { id: genId(), name:'🆕 최신 AI (Latest)', info:t('새롭게 각광받는 영상 생성 모델','New & cutting-edge video models'), expanded:true, children:[
+            leaf('OpenAI Sora', t('장면 일관·물리 충실도','Scene consistency & physics fidelity'),{
+              vendor:'OpenAI', pricing:t('—','—'), platforms:'—', languages:'—',
+              features:[ t('장면 묘사 기반 긴 샷','Long shots from descriptions'), t('복잡한 카메라워크','Complex camerawork') ],
+              uses:[ t('시네마틱 프리비즈','Cinematic previz'), t('실험적 단편','Experimental shorts') ],
+              prompt:t('aerial establishing shot over snowy Tokyo at dawn, 10s','aerial establishing shot over snowy Tokyo at dawn, 10s'),
+              metrics:{popularity:.70,maturity:.55}
+            }),
+            leaf('Luma Dream Machine', t('사진풍 모션 합성','Photoreal motion synthesis'),{
+              vendor:'Luma AI', pricing:t('프리미엄','Premium'), platforms:'Web', languages:'EN',
+              features:[ t('이미지/문장→영상','Image/text→video'), t('인물/배경 일관성','Subject/background consistency') ],
+              uses:[ t('룩 개발 테스트','Look-dev tests'), t('뮤직비디오 컷','Music video cuts') ],
+              prompt:t('slow motion close-up of pouring coffee with rising steam, 5s','slow motion close-up of pouring coffee with rising steam, 5s'),
+              metrics:{popularity:.66,maturity:.60}
+            }),
+            leaf('Kling AI', t('롱포맷·다이내믹 카메라','Long-form & dynamic camera'),{
+              vendor:'Kuaishou', pricing:t('—','—'), platforms:'Web', languages:'CN/EN',
+              features:[ t('고해상도 롱샷','Hi-res long shots'), t('다양한 질감','Various cinematic textures') ],
+              uses:[ t('트레일러 프리비즈','Trailer pre-viz'), t('스타일 테스트','Style tests') ],
+              prompt:t('handheld travel vlog through night market, neon bokeh, 8s','handheld travel vlog through night market, neon bokeh, 8s'),
+              metrics:{popularity:.62,maturity:.52}
+            }),
+            leaf('Stable Video Diffusion', t('이미지→영상 확장','Image-to-video via diffusion'),{
+              vendor:'Stability AI', pricing:t('오픈/자체 호스팅','Open/self-host'), platforms:'Local/Web', languages:'—',
+              features:[ t('프레임 보간/확장','Frame interpolation/expansion'), t('오픈 생태계','Open ecosystem') ],
+              uses:[ t('모션 포스터·시네그래프','Motion posters & cinemagraphs'), t('스타일 실험','Style experiments') ],
+              prompt:t('cinemagraph of waterfall where only water moves, 4s loop','cinemagraph of waterfall where only water moves, 4s loop'),
+              metrics:{popularity:.58,maturity:.55}
+            })
+          ]}
+        ]
+      },
+      {
+        id: genId(),
+        name: 'Music Generation',
+        logo: themeIcons.music,
+        info: t('텍스트→음악/효과음 생성','Text-to-music/SFX'),
+        expanded: true,
+        children:[
+          { id: genId(), name:'🔥 인기 있는 AI (Popular)', info:t('대중적으로 많이 쓰이는 음악 생성','Popular music generators'), expanded:true, children:[
+            leaf('Suno', t('노래/보컬까지 원클릭','Full songs incl. vocals'),{
+              vendor:'Suno', pricing:t('프리미엄','Premium'), platforms:'Web', languages:'EN',
+              features:[ t('가사·보컬 합성','Lyrics & vocal synthesis'), t('스타일 프리셋','Style presets') ],
+              uses:[ t('데모/가이드 트랙','Demos & guide tracks'), t('틱톡/릴스 배경음','Shorts background music') ],
+              prompt:t('k-pop style upbeat dance track, catchy hook, female vocal','k-pop style upbeat dance track, catchy hook, female vocal'),
+              metrics:{popularity:.90,maturity:.82}
+            }),
+            leaf('Udio', t('자연스러운 멜로디·보컬','Natural melodies & vocals'),{
+              vendor:'Udio', pricing:t('프리미엄','Premium'), platforms:'Web', languages:'EN',
+              features:[ t('코러스/브리지 구조','Chorus/bridge structure'), t('고품질 마스터링','High-quality mastering') ],
+              uses:[ t('싱어송라이터 데모','Singer-songwriter demos'), t('광고 짧은 음악','Ad jingles') ],
+              prompt:t('acoustic pop ballad, warm piano & strings, heartfelt male vocal','acoustic pop ballad, warm piano & strings, heartfelt male vocal'),
+              metrics:{popularity:.85,maturity:.80}
+            }),
+            leaf('AIVA', t('오케스트라/영화음 특화','Orchestral & cinematic'),{
+              vendor:'AIVA', pricing:t('프리미엄','Premium'), platforms:'Web', languages:'Multi',
+              features:[ t('파트/형식 제어','Form/part control'), t('MIDI 내보내기','MIDI export') ],
+              uses:[ t('배경 음악·게임 테마','Background & game themes'), t('스코어 스케치','Score sketches') ],
+              prompt:t('cinematic score, strings swell, brass accents, 120 BPM','cinematic score, strings swell, brass accents, 120 BPM'),
+              metrics:{popularity:.78,maturity:.83}
+            }),
+            leaf('Beatoven.ai', t('분위기·길이 제어','Mood & length control'),{
+              vendor:'Beatoven', pricing:t('프리미엄','Premium'), platforms:'Web', languages:'EN',
+              features:[ t('장르/분위기 선택','Genre/mood presets'), t('트랙 구조 자동화','Automated structure') ],
+              uses:[ t('유튜브/팟캐스트 BGM','YouTube/podcast BGM'), t('앱/게임 BGM','App/game BGM') ],
+              prompt:t('lofi chillhop, mellow, 70 BPM, vinyl crackle','lofi chillhop, mellow, 70 BPM, vinyl crackle'),
+              metrics:{popularity:.72,maturity:.75}
+            })
+          ]},
+          { id: genId(), name:'🆕 최신 AI (Latest)', info:t('새로 등장·개선된 모델','Newly released or improved'), expanded:true, children:[
+            leaf('Stable Audio', t('텍스트→음악·효과음','Text-to-music & SFX'),{
+              vendor:'Stability AI', pricing:t('프리미엄','Premium'), platforms:'Web/API', languages:'EN',
+              features:[ t('고해상도 샘플링','Hi-res sampling'), t('효과음 생성','SFX generation') ],
+              uses:[ t('트레일러 SFX','Trailer SFX'), t('인디 게임 사운드','Indie game sounds') ],
+              prompt:t('epic trailer hit, braaam, riser, punchy impact','epic trailer hit, braaam, riser, punchy impact'),
+              metrics:{popularity:.60,maturity:.55}
+            }),
+            leaf('MusicGen', t('프롬프트 기반 멜로디','Prompt-based melody'),{
+              vendor:'Meta (Research)', pricing:t('오픈 연구','Open research'), platforms:'Local/Web', languages:'—',
+              features:[ t('멜로디 조건부','Melody conditioning'), t('스타일 키워드','Style keywords') ],
+              uses:[ t('멜로디 아이디어','Melody ideation'), t('장르 변환','Genre conditioning') ],
+              prompt:t('jazzy lo-fi with walking bass, vintage vibe, 85 BPM','jazzy lo-fi with walking bass, vintage vibe, 85 BPM'),
+              metrics:{popularity:.58,maturity:.50}
+            }),
+            leaf('AudioCraft', t('오디오 생성 연구 계열','Research suite'),{
+              vendor:'Meta (Research)', pricing:t('오픈 연구','Open research'), platforms:'Local/Web', languages:'—',
+              features:[ t('오픈 연구 코드','Open research code'), t('텍스처/음향 합성','Texture & sound synthesis') ],
+              uses:[ t('사운드 디자인 실험','Sound design experiments'), t('데이터셋 기반 튜닝','Dataset-driven tuning') ],
+              prompt:t('ambient forest rain with subtle synth pads','ambient forest rain with subtle synth pads'),
+              metrics:{popularity:.52,maturity:.48}
+            }),
+            leaf('Riffusion 2', t('스펙트로그램 기반 접근','Spectrogram-based'),{
+              vendor:'Community', pricing:t('오픈','Open'), platforms:'Local/Web', languages:'—',
+              features:[ t('루프 친화','Loop-friendly'), t('빠른 반복','Quick iteration') ],
+              uses:[ t('시네그래프형 오디오 루프','Cinemagraph-like loops'), t('아이디어 스케치','Idea sketches') ],
+              prompt:t('synthwave arpeggio loop, retro 80s vibe, 100 BPM','synthwave arpeggio loop, retro 80s vibe, 100 BPM'),
+              metrics:{popularity:.50,maturity:.45}
+            })
+          ]}
+        ]
+      },
+      {
+        id: genId(),
+        name: 'Chatbot',
+        logo: themeIcons.chat,
+        info: t('대화형 AI 어시스턴트','Conversational assistants'),
+        expanded: true,
+        children:[
+          { id: genId(), name:'🔥 인기 있는 AI (Popular)', info:t('가장 널리 쓰이는 챗봇','Most widely used chat AIs'), expanded:true, children:[
+            leaf('ChatGPT', t('범용 대화·코파일럿','General-purpose assistant'),{
+              vendor:'OpenAI', pricing:t('프리미엄/사용량','Premium/usage'), platforms:'Web/App/API', languages:'Multi',
+              features:[ t('코드·글쓰기·요약','Code, writing, summarization'), t('툴 호출','Tool calling') ],
+              uses:[ t('문서 초안·요약','Drafts & summaries'), t('코딩 보조','Coding assist') ],
+              prompt:t('이 글을 5문장으로 요약하고 핵심 키워드 표로 정리','Summarize in 5 sentences and tabulate key terms'),
+              metrics:{popularity:.97,maturity:.90}
+            }),
+            leaf('Claude', t('긴 문맥·안전 지향','Long context & safety focus'),{
+              vendor:'Anthropic', pricing:t('프리미엄/사용량','Premium/usage'), platforms:'Web/App/API', languages:'Multi',
+              features:[ t('정교한 지침 준수','Careful instruction following'), t('고품질 요약','High-quality summaries') ],
+              uses:[ t('정책/계약 요약','Policy/contract reviews'), t('리스크 코멘트','Risk commentary') ],
+              prompt:t('계약 핵심 리스크를 표로 정리하고 근거 조항 인용','Tabulate contract risks and cite clauses'),
+              metrics:{popularity:.90,maturity:.85}
+            }),
+            leaf('Gemini', t('구글 생태계 최적','Optimized for Google ecosystem'),{
+              vendor:'Google', pricing:t('프리미엄/사용량','Premium/usage'), platforms:'Web/App/API', languages:'Multi',
+              features:[ t('멀티모달·검색 연계','Multimodal + Search'), t('Workspace 연동','Workspace integration') ],
+              uses:[ t('자료조사·교육콘텐츠','Research & education'), t('Docs/Sheets 자동화','Docs/Sheets automation') ],
+              prompt:t('세 논문의 공통점/차이를 표로 요약','Summarize three papers as a comparison table'),
+              metrics:{popularity:.82,maturity:.78}
+            }),
+            leaf('Microsoft Copilot', t('업무 생산성·M365','Productivity across M365'),{
+              vendor:'Microsoft', pricing:t('엔터프라이즈/사용량','Enterprise/usage'), platforms:'Web/App/M365', languages:'Multi',
+              features:[ t('Word/Excel/Outlook 통합','Word/Excel/Outlook integration'), t('거버넌스/감사','Governance & audit') ],
+              uses:[ t('회의 요약·메일 초안','Meetings & emails'), t('슬라이드 자동 작성','Slide authoring') ],
+              prompt:t('지난 분기 실적 요약과 핵심 이슈 3가지 슬라이드 생성','Summarize last quarter & 3-slide highlights'),
+              metrics:{popularity:.86,maturity:.84}
+            })
+          ]},
+          { id: genId(), name:'🆕 최신 AI (Latest)', info:t('새롭게 부상하는 챗봇','New & rising chat AIs'), expanded:true, children:[
+            leaf('Perplexity', t('검색+대화 하이브리드','Search-chat hybrid'),{
+              vendor:'Perplexity AI', pricing:t('프리미엄','Premium'), platforms:'Web/App', languages:'Multi',
+              features:[ t('실시간 출처 인용','Cited, real-time answers'), t('웹 탐색 최적','Web exploration oriented') ],
+              uses:[ t('빠른 리서치','Rapid research'), t('사실 확인','Fact-checking') ],
+              prompt:t('해당 주제 핵심 자료 5개와 한줄 요약','List 5 key sources w/ one-line summaries'),
+              metrics:{popularity:.78,maturity:.70}
+            }),
+            leaf('Grok', t('실시간 X 문맥','Real-time X context'),{
+              vendor:'xAI', pricing:t('프리미엄','Premium'), platforms:'Web/App', languages:'EN',
+              features:[ t('시사·밈 문맥 반영','News/meme aware'), t('개성 있는 톤','Witty tone') ],
+              uses:[ t('이벤트 추적','Event tracking'), t('트렌드 요약','Trend summarization') ],
+              prompt:t('오늘 기술 업계 주요 이슈 10줄 요약','Summarize today’s tech news in 10 lines'),
+              metrics:{popularity:.70,maturity:.60}
+            }),
+            leaf('Pi (Inflection)', t('공감형 코칭 대화','Empathetic, coaching style'),{
+              vendor:'Inflection', pricing:t('프리미엄','Premium'), platforms:'App/Web', languages:'EN',
+              features:[ t('감정 반영 리스폰스','Emotion-aware responses'), t('간결한 코칭 질문','Concise coaching prompts') ],
+              uses:[ t('일상 상담·정리','Daily reflection'), t('학습 파트너','Study partner') ],
+              prompt:t('오늘 힘들었던 점 정리와 내일 한 가지 행동 정해줘','Help me reflect & pick one action'),
+              metrics:{popularity:.62,maturity:.65}
+            }),
+            leaf('Meta AI', t('Llama 기반 어시스턴트','Assistant powered by Llama'),{
+              vendor:'Meta', pricing:t('—','—'), platforms:'Messenger/IG/WA/Web', languages:'Multi',
+              features:[ t('이미지/검색 연계','Image & search tie-ins'), t('메신저 내 사용','Use in messenger apps') ],
+              uses:[ t('일상 Q&A','Everyday Q&A'), t('이미지 생성 보조','Image gen assistant') ],
+              prompt:t('주말 서울 근교 당일치기 3개 추천','Suggest 3 day trips near Seoul'),
+              metrics:{popularity:.65,maturity:.58}
+            })
+          ]}
+        ]
+      }
+    ]
+  };
+
+  function leaf(name,info,details){
+    return { id: genId(), name, info, details };
+  }
+
+  // ===================== Model & State =====================
+  let current=null; // selected node
+  const treeEl = document.getElementById('tree');
+  const panelEl = document.getElementById('panel');
+  const q = document.getElementById('q');
+  const langBtn = document.getElementById('toggleLang');
+  const live = document.getElementById('live');
+  const resultCountEl = document.getElementById('resultCount');
+  let prevExpandedIds = null;
+
+  function announce(msg){ live.textContent=''; setTimeout(()=> live.textContent=msg, 40); }
+
+  function depthOf(node){ let d=1, cur=node; while(cur && parentOf(cur)){ d++; cur=parentOf(cur); } return d; }
+  function parentOf(node){ return findParent(data, node); }
+  function themeOf(node){ let top=node; let p=parentOf(node); while(p && p!==data){ top=p; p=parentOf(top); } const n=(top.name||'').toLowerCase(); if(n.includes('image')) return 'image'; if(n.includes('video')) return 'video'; if(n.includes('music')) return 'music'; if(n.includes('chat')) return 'chat'; return 'default'; }
+  function findParent(root, target){ if(!root.children) return null; for(const c of root.children){ if(c===target) return root; const p=findParent(c,target); if(p) return p; } return null; }
+
+  function walkVisible(node=data, out=[]){
+    if(node!==data){ out.push(node); }
+    if(node.expanded && node.children){ node.children.forEach(c=> walkVisible(c,out)); }
+    return out;
+  }
+
+  function allNodes(root=data, out=[]){ if(root!==data) out.push(root); (root.children||[]).forEach(c=> allNodes(c,out)); return out; }
+
+  function saveState(){
+    const expanded = allNodes().filter(n=> n.expanded).map(n=> n.id);
+    localStorage.setItem('aimap.v2.expanded', JSON.stringify(expanded));
+    localStorage.setItem('aimap.v2.selected', current? current.id : '');
+    localStorage.setItem('aimap.v2.lang', lang);
+  }
+  function loadState(){
+    try{
+      const expanded=JSON.parse(localStorage.getItem('aimap.v2.expanded')||'[]');
+      const selected=localStorage.getItem('aimap.v2.selected');
+      allNodes().forEach(n=> n.expanded = expanded.includes(n.id));
+      if(selected){ current = allNodes().find(n=> n.id===selected) || null; }
+    }catch(_){ /* ignore */ }
+  }
+
+  // ===================== Tree Rendering =====================
+  function renderTree(){
+    treeEl.innerHTML='';
+    const rootGroup = document.createElement('div');
+    (data.children||[]).forEach(child=> rootGroup.appendChild(renderNode(child)) );
+    treeEl.appendChild(rootGroup);
+    if(!current){ current = (data.children?.[0]) || null; }
+    if(current){ focusLabel(current); renderPanel(current); }
+  }
+
+  function renderNode(node){
+    const wrap=document.createElement('div'); wrap.className='node'; node.el=wrap; wrap.classList.add('depth-'+depthOf(node)); if (node.children && node.children.length) { wrap.classList.add('has-children'); } const depth=depthOf(node); wrap.classList.add('depth-'+depth); const theme=themeOf(node); if(theme!=='default') wrap.classList.add('theme-'+theme);
+    const label=document.createElement('div'); node.labelEl=label;
+    label.className='label'; label.setAttribute('role','treeitem');
+    label.setAttribute('tabindex','-1');
+    label.setAttribute('aria-level', String(depthOf(node)));
+
+    if(node.children && node.children.length){
+      const kidsWrap=document.createElement('div'); kidsWrap.className='kids';
+      const gid='group-'+node.id; kidsWrap.id=gid; label.setAttribute('aria-controls', gid);
+
+      const chev=document.createElement('button'); chev.className='chev'; chev.type='button';
+      const svg = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>`;
+      chev.innerHTML=svg;
+      chev.setAttribute('aria-label', (node.expanded ? (lang==='ko'?'접기: ':'Collapse: ') : (lang==='ko'?'펼치기: ':'Expand: ')) + pickLang(node.name||''));
+      chev.addEventListener('click', (e)=>{ e.stopPropagation(); toggle(node); });
+
+      const txt=document.createElement('div'); txt.className='txt'; txt.textContent=pickLang(node.name);
+      const iconSrc = node.logo || (depth===2 ? (themeIcons[theme]||'') : '');
+      if(iconSrc){ const icon=document.createElement('span'); icon.className='icon'; const im=document.createElement('img'); im.alt=''; im.src=iconSrc; icon.appendChild(im); label.appendChild(chev); label.appendChild(icon); }
+      else { label.appendChild(chev); }
+      label.appendChild(txt);
+
+      label.addEventListener('click', ()=> select(node));
+      label.addEventListener('dblclick', ()=> { if(node.children) toggle(node); });
+      label.addEventListener('keydown', (ev)=> onKey(node,ev));
+
+      wrap.appendChild(label);
+      kidsWrap.setAttribute('role','group');
+      kidsWrap.style.display = node.expanded? 'block':'none';
+      if(node.expanded) label.setAttribute('aria-expanded','true');
+      else label.setAttribute('aria-expanded','false');
+
+      (node.children||[]).forEach(c=> kidsWrap.appendChild(renderNode(c)) );
+      wrap.appendChild(kidsWrap);
+    }else{
+      const spacer=document.createElement('div'); spacer.style.width='22px'; spacer.style.height='22px'; spacer.className='chev'; spacer.setAttribute('aria-hidden','true');
+      const txt=document.createElement('div'); txt.className='txt'; txt.textContent=pickLang(node.name);
+      const iconSrc = node.logo || (depth===2 ? (themeIcons[theme]||'') : '');
+      if(iconSrc){ const icon=document.createElement('span'); icon.className='icon'; const im=document.createElement('img'); im.alt=''; im.src=iconSrc; icon.appendChild(im); label.appendChild(spacer); label.appendChild(icon); }
+      else { label.appendChild(spacer); }
+      label.appendChild(txt);
+      label.addEventListener('click', ()=> select(node));
+      label.addEventListener('dblclick', ()=> { if(node.children) toggle(node); });
+      label.addEventListener('keydown', (ev)=> onKey(node,ev));
+      wrap.appendChild(label);
+    }
+    return wrap;
+  }
+
+  function focusLabel(node){
+    const labs = treeEl.querySelectorAll('.label'); labs.forEach(l=> l.tabIndex=-1);
+    if(node && node.labelEl){ node.labelEl.tabIndex=0; node.labelEl.focus({preventScroll:false}); }
+  }
+
+  function toggle(node, force){ node.expanded = (force!=null? !!force : !node.expanded); saveState(); renderTree(); }
+  function select(node){ current=node; saveState(); renderPanel(node); focusLabel(node); }
+
+  function onKey(node, ev){
+    const key=ev.key;
+    const visible = walkVisible();
+    const idx = visible.indexOf(node);
+    if(key==='ArrowDown'){
+      ev.preventDefault(); const n=visible[Math.min(idx+1, visible.length-1)]; if(n) select(n);
+    }
+    else if(key==='ArrowUp'){
+      ev.preventDefault(); const n=visible[Math.max(idx-1, 0)]; if(n) select(n);
+    }
+    else if(key==='ArrowRight'){
+      if(node.children){ ev.preventDefault();
+        if(!node.expanded){ toggle(node,true); }
+        else { const first = node.children && node.children[0]; if(first) select(first); }
+      }
+    }
+    else if(key==='ArrowLeft'){
+      if(node.children && node.expanded){ ev.preventDefault(); toggle(node,false); }
+      else { const p=parentOf(node); if(p && p!==data){ ev.preventDefault(); select(p); } }
+    }
+    else if(key==='Home'){
+      ev.preventDefault(); const n=walkVisible()[0]; if(n) select(n);
+    }
+    else if(key==='End'){
+      ev.preventDefault(); const vs=walkVisible(); const n=vs[vs.length-1]; if(n) select(n);
+    }
+    else if(key==='Enter' || key===' '){ if(node.children){ ev.preventDefault(); toggle(node); } }
+  }
+
+  // ===================== Panel Rendering =====================
+  function renderPanel(node){
+    if(!node){ panelEl.innerHTML=''; return; }
+    let html='';
+    const link = (node.details?.link || LINKS[node.name] || '');
+    const logoSrc = (node.details?.logo || node.logo || '');
+    html += `<div class=\"title\"><div class=\"meta\">${logoSrc ? `<img alt=\"logo\" src=\"${logoSrc}\">` : ''}<div><h2>${escapeHtml(pickLang(node.name))}</h2><div class=\"muted\">${escapeHtml(pickLang(node.info||''))}</div></div></div>${link ? `<a class=\"visit\" href=\"${link}\" target=\"_blank\" rel=\"noopener noreferrer\">${lang==='ko'?'바로가기':'Visit'}</a>` : ''}</div>`;
+
+    if(node.details){
+      const d=node.details;
+      html += `<div class="grid" style="margin-top:10px">`+
+              cardKV([
+                ['Vendor', d.vendor||'—'],
+                ['Pricing', pickLang(d.pricing||'—')],
+                ['Platforms', d.platforms||'—'],
+                ['Languages', d.languages||'—']
+              ])+
+              cardMeters(d.metrics) +
+              `</div>`;
+
+      if(d.popularity){ html += `<h3>${lang==='ko'?'인기 요인':'Why it’s popular'}</h3><div class="card">${escapeHtml(pickLang(d.popularity))}</div>`; }
+      if(d.features?.length){ html += `<h3>${lang==='ko'?'핵심 특징':'Key features'}</h3><div class="card"><ul>`+ d.features.map(x=>`<li>${escapeHtml(pickLang(x))}</li>`).join('') + `</ul></div>`; }
+      if(d.pros?.length || d.cons?.length){
+        html += `<h3>${lang==='ko'?'장단점':'Pros & cons'}</h3><div class="grid">`+
+          `<div class="card"><b>✅ ${lang==='ko'?'장점':'Pros'}</b><ul>`+ (d.pros||[]).map(x=>`<li>${escapeHtml(pickLang(x))}</li>`).join('') + `</ul></div>`+
+          `<div class="card"><b>❌ ${lang==='ko'?'단점':'Cons'}</b><ul>`+ (d.cons||[]).map(x=>`<li>${escapeHtml(pickLang(x))}</li>`).join('') + `</ul></div>`+
+        `</div>`;
+      }
+      if(d.uses?.length){ html += `<h3>${lang==='ko'?'추천 사용':'Recommended uses'}</h3><div class="card"><ul>`+ d.uses.map(x=>`<li>${escapeHtml(pickLang(x))}</li>`).join('') + `</ul></div>`; }
+      if(d.trends){ html += `<h3>${lang==='ko'?'최신 동향':'Latest updates'}</h3><div class="card">${escapeHtml(pickLang(d.trends))}</div>`; }
+      if(d.prompt){ html += `<h3>Prompt</h3><div class="card"><code style="white-space:pre-wrap">${escapeHtml(pickLang(d.prompt))}</code></div>`; }
+    } else if(node.children){
+      html += `<div class="card">${lang==='ko'?'왼쪽에서 항목을 선택하세요.':'Select an item from the left.'}</div>`;
+    }
+
+    panelEl.innerHTML = html;
+  }
+
+  function cardKV(rows){
+    return `<div class="card">`+
+      rows.map(([k,v])=>`<div class="kv"><b>${k}</b><span>${escapeHtml(String(v))}</span></div>`).join('')+
+      `</div>`;
+  }
+  function cardMeters(m){
+    const p = Math.round((m?.popularity||0)*100);
+    const s = Math.round((m?.maturity||0)*100);
+    return `<div class="card">`+
+      `<div class="kv"><b>${lang==='ko'?'인기도':'Popularity'}</b><div class="meter" style="flex:1"><span style="width:${p}%"></span></div><span style="margin-left:6px">${p}%</span></div>`+
+      `<div class="kv"><b>${lang==='ko'?'성숙도':'Maturity'}</b><div class="meter" style="flex:1"><span style="width:${s}%"></span></div><span style="margin-left:6px">${s}%</span></div>`+
+      `</div>`;
+  }
+
+  function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]) ); }
+
+  // ===================== Search =====================
+  function searchTree(){
+    const term=(q.value||'').trim().toLowerCase();
+    let count=0;
+    allNodes().forEach(n=> n.el && n.el.classList.remove('match','dim'));
+
+    if(!term){
+      resultCountEl.textContent='0';
+      if(prevExpandedIds){
+        allNodes().forEach(n=> n.expanded = prevExpandedIds.includes(n.id));
+        prevExpandedIds = null;
+        renderTree();
+      } else {
+        renderTree();
+      }
+      announce(lang==='ko'?'검색 비움':'Cleared search');
+      return;
+    }
+
+    if(prevExpandedIds===null){
+      prevExpandedIds = allNodes().filter(n=> n.expanded).map(n=> n.id);
+    }
+
+    function dfs(node){
+      let me=false; if(node.name){ me = pickLang(node.name).toLowerCase().includes(term); }
+      let childHit=false; (node.children||[]).forEach(c=>{ if(dfs(c)) childHit=true; });
+      const hit=me||childHit;
+      if(hit){ node.expanded=true; if(node.el){ node.el.classList.add('match'); count++; } }
+      else{ if(node.el) node.el.classList.add('dim'); }
+      return hit;
+    }
+    dfs(data);
+    resultCountEl.textContent=String(count);
+    renderTree();
+    announce((lang==='ko'? '검색 결과: ':'Results: ')+count);
+  }
+
+  // ===================== Controls =====================
+  document.getElementById('expandAll').addEventListener('click',()=>{ allNodes().forEach(n=> n.expanded=true); saveState(); renderTree(); });
+  document.getElementById('collapseAll').addEventListener('click',()=>{ allNodes().forEach(n=> n.expanded=false); data.expanded=true; saveState(); renderTree(); });
+  document.getElementById('resetState').addEventListener('click',()=>{ localStorage.removeItem('aimap.v2.expanded'); localStorage.removeItem('aimap.v2.selected'); renderTree(); announce(lang==='ko'?'상태 초기화':'State reset'); });
+
+  langBtn.addEventListener('click',()=>{ lang = (lang==='ko'? 'en':'ko'); langBtn.setAttribute('aria-pressed', String(lang==='en')); langBtn.textContent = (lang==='ko'? '한국어':'English'); saveState(); renderTree(); announce(lang==='ko'?'언어 전환: 한국어':'Language switched: English'); });
+  q.addEventListener('input', ()=> searchTree());
+
+  // ===================== Init =====================
+  loadState();
+  renderTree();
+  renderPanel(current);
+
+  </script>
+</body>
+</html>
