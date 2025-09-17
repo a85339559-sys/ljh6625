@@ -1,0 +1,414 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>한 단어 시(詩) 생성기</title>
+  <style>
+    :root{
+      --bg:#0b0c10; --card:#12131a; --muted:#a1a7b3; --text:#e7ebf3; --accent:#8fd3ff;
+      --warm:#ffd6a5; --calm:#b9e1ff; --pray:#cdb4db;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; font-family:ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR","Apple SD Gothic Neo",Helvetica,Arial,"Apple Color Emoji","Segoe UI Emoji";
+      color:var(--text); background:
+        radial-gradient(60vmax 60vmax at 10% 10%, #1a2a6c22, transparent),
+        radial-gradient(50vmax 50vmax at 90% 30%, #b21f1f22, transparent),
+        radial-gradient(50vmax 50vmax at 50% 90%, #fdbb2d22, transparent),
+        var(--bg);
+    }
+    .wrap{max-width:1000px; margin:0 auto; padding:32px 20px 64px}
+    header{display:flex; align-items:center; gap:12px; margin-bottom:24px}
+    .logo{width:42px; height:42px; border-radius:12px; background:linear-gradient(135deg,#8fd3ff,#cdb4db,#ffd6a5); box-shadow:0 6px 30px #0008}
+    h1{font-size:clamp(16px,2.5vw,24px); margin:0}
+    .muted{color:var(--muted)}
+
+    .card{background:linear-gradient(180deg,#161722,#0f1017); border:1px solid #ffffff14; box-shadow:0 10px 40px #0007; border-radius:20px; padding:18px}
+    .grid{display:grid; grid-template-columns:1fr; gap:18px}
+
+    label{font-size:12px; color:var(--muted); display:block; margin:12px 0 6px}
+    input[type="text"],select{width:100%; background:#0f1118; color:var(--text); border:1px solid #ffffff22; border-radius:12px; padding:14px 14px; outline:none}
+
+    .row{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+    .btn{appearance:none; border:none; background:#1a1c27; color:var(--text); padding:12px 16px; border-radius:14px; cursor:pointer; border:1px solid #ffffff18; transition:transform .08s ease, background .2s}
+    .btn:hover{transform:translateY(-1px)} .btn:disabled{opacity:.6; cursor:not-allowed}
+    .btn.primary{background:linear-gradient(135deg,#1f5cff,#20c6ff); color:#fff; border:none}
+    .btn.ghost{background:#0f1118}
+
+    /* 시 카드: 한 눈에 크게 */
+    .poems{display:grid; grid-template-columns:1fr; gap:10px; margin-top:10px}
+    .poem-card{position:relative; border:1px solid #ffffff12; border-radius:16px; padding:12px; min-height:220px; background-size:cover; background-position:center; overflow:hidden}
+    .poem-card::before{content:""; position:absolute; inset:0; background:linear-gradient(180deg,#00000055,#00000022 40%,#00000066)}
+    .poem-inner{position:relative; z-index:1}
+    .poem-title{font-size:20px; letter-spacing:.02em; color:#c7ccda; margin:0 0 8px}
+    .poem-text{white-space:pre-wrap; font-size:15px; line-height:1.5; text-shadow:0 1px 1px #00000099}
+    .tag{display:inline-block; font-size:12px; padding:4px 8px; border-radius:999px; background:#ffffff10; border:1px solid #ffffff18}
+
+    .accent-calm{color:var(--calm)} .accent-warm{color:var(--warm)} .accent-pray{color:var(--pray)}
+    .variant-a .poem-title strong{color:#9ad1ff}
+    .variant-b .poem-title strong{color:#ffd27a}
+    .variant-c .poem-title strong{color:#d9b7ff}
+    .variant-a .poem-card{border-color:#7cc8ff33}
+    .variant-b .poem-card{border-color:#ffcf7a33}
+    .variant-c .poem-card{border-color:#cdb4db33}
+    .variant-b .poem-text{letter-spacing:.01em}
+    .variant-c .poem-text{font-style:italic}
+    /* 버전 배지 */
+    .side-badge{position:absolute; left:10px; top:10px; width:28px; height:28px; font-size:12px; border-radius:9999px; display:flex; align-items:center; justify-content:center; font-weight:700; background:#0008; border:1px solid #ffffff33; color:#fff; z-index:2}
+    .variant-a .side-badge{background:#1d2bff66}
+    .variant-b .side-badge{background:#ff7a1d66}
+    .variant-c .side-badge{background:#9f6cff66}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="logo" aria-hidden="true"></div>
+      <div>
+        <h1>한 단어 시(詩) 생성기</h1>
+        <div class="muted">단어 하나로 감동 시 3버전 생성 — 심플 & 오프라인</div>
+      </div>
+    </header>
+
+    <div class="card grid">
+      <section>
+        <label for="word">키워드 (예: 새벽, 손, 위로)</label>
+        <input id="word" type="text" placeholder="그대" />
+
+        <div class="row">
+          <div style="flex:1">
+            <label for="mood">무드</label>
+            <select id="mood">
+              <option value="calm">차분</option>
+              <option value="warm">따뜻</option>
+              <option value="pray">평온</option>
+            </select>
+          </div>
+          <div style="width:200px">
+            <label for="lines">줄 수</label>
+            <select id="lines">
+              <option value="3">3줄 (짧게)</option>
+              <option value="4" selected>4줄 (기본)</option>
+              <option value="5">5줄 (조금 길게)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:12px">
+          <button class="btn primary" id="gen">시 3개 생성</button>
+          
+          
+        </div>
+
+        <footer style="margin-top:14px">
+          <div class="hint">엔터를 눌러도 생성됩니다.</div>
+        </footer>
+      </section>
+
+      <section>
+        <div>
+          <div class="row" style="justify-content:space-between; align-items:center">
+            <div class="chip" id="seedInfo">seed: -</div>
+            <div class="row">
+              <span class="tag">무드: <span id="moodTag" class="accent-calm">차분</span></span>
+            </div>
+          </div>
+        </div>
+        <div class="poems" id="poems" aria-live="polite"></div>
+      </section>
+    </div>
+
+    <footer>
+      <p id="test-report" class="muted" style="font-size:12px"></p>
+    </footer>
+  </div>
+
+<script>
+// ===================== 공용 유틸 =====================
+function hasJong(word){
+  if(!word) return false; const ch = word.charCodeAt(word.length-1);
+  if(ch < 0xAC00 || ch > 0xD7A3) return false; const index = ch - 0xAC00; return (index % 28) !== 0;
+}
+const JOSA = { IG:(w)=>hasJong(w)?'이':'가', EN:(w)=>hasJong(w)?'은':'는', RL:(w)=>hasJong(w)?'을':'를', WA:(w)=>hasJong(w)?'과':'와' };
+function withJosa(w,p){ return p==='이/가'?JOSA.IG(w):p==='은/는'?JOSA.EN(w):p==='을/를'?JOSA.RL(w):p==='과/와'?JOSA.WA(w):'' }
+
+// ===================== 어휘/템플릿 =====================
+const LEX = {
+  baseNouns:['새벽','빛','숨','바람','손','길','편지','창문','적막','여정','눈빛','고요','별','시간','발자국','파도','노을','구름','나무결','숨결','들꽃','봄빛','가을햇살','안부','기억','쉼표','별빛','한숨','미소','햇살','그림자','파편'],
+  verbs1:['머문다','스며든다','감싼다','건넨다','기다린다','닿는다','밝힌다','익는다','둥글어진다','흐른다','맺힌다','번진다','피어난다','잔다','깊어진다','스친다','머금는다'],
+  verbs2:['안아 준다','불러 본다','써 내려간다','건너간다','깨운다','붙잡아 본다','맞이한다','여민다','다독인다','토닥인다','그려 본다','속삭인다','어루만진다'],
+  adj1:{
+    calm:['고요한','잔잔한','맑은','은근한','차분한','정갈한','서늘한','담담한','여린'],
+    warm:['포근한','따사로운','노을빛','은은한','다정한','온기 어린','부드러운','순한','따뜻한'],
+    pray:['평온한','담담한','맑은','온화한','잠잠한','은은한','고요한']
+  },
+  closers:{
+    calm:['나는 조금 잔잔한 사람이 된다','오늘도 무너지지 않는다','당신의 이름을 낮게 부른다','숨을 고르고 다시 걷는다','파도 대신 고요를 품는다'],
+    warm:['나는 끝내 따뜻한 사람이 된다','당신에게 미소를 건넨다','오늘이라는 선물을 껴안는다','서로의 손을 다시 잡는다','불빛처럼 네 곁에 선다'],
+    pray:['나는 오늘을 조용히 받아들인다','내 안의 물결이 잦아든다','숨 고르고 길을 계속 간다','조용한 평안이 내린다']
+  },
+  synonym:{ '오늘':['오늘','이 아침','이 저녁','지금 이 순간'], '작은':['작은','조그만','아주 낮은','소박한'], '조용히':['조용히','가만히','천천히','살며시'], '마음':['마음','가슴','속내','내면'] }
+};
+
+const TEMPLATES = {
+  calm:[ '{W}{I} 지나간 자리마다 {ADJ} 숨이 머문다', '{TODAY}, {W}{E} {VERB1} {HEART}에 {N} 한 줌', '{N} 끝에서 {W}{R} 부르며 나는 조금 {ADJ2} 사람이 된다', '낮은 숨 사이로 {W}{I} {SILENT} {VERB2}', '{W}{E} 흘려 보낸 말끝에 {ADJ} 고요가 남아' ],
+  warm:[ '{W}{E} 건네던 말끝에 {ADJ} 온기가 남아', '{TODAY}, 기억의 {N} 위로 햇살이 {VERB1}', '나는 {W}{R} 품에 안고 {VERB2}', '손끝에서 {ADJ2} 하루가 피어난다', '{W}{I} 머무는 자리마다 다정이 번진다' ],
+  pray:[ '{W}{I} 닿는 곳마다 {ADJ} 빛이 머문다', '{TODAY}, 발끝의 {N} 하나 {SILENT} {VERB1}', '나는 {W}{R} 불러 보며 {ADJ2} 길을 걷는다', '끝내 남는 것은 작은 평안, 그리고 너', '{W}{E} 바라보다 숨이 고요해진다' ]
+};
+
+const VAR_LABEL = {A:'가', B:'나', C:'다'};
+
+// ===================== 상태/랜덤 =====================
+let CURRENT_SEED = null;
+function choice(arr){ return arr[Math.floor(Math.random()*arr.length)] }
+function shuffle(arr){ return [...arr].sort(()=>Math.random()-0.5) }
+function seededRand(seed){ let t = seed + 0x6D2B79F5; return ()=>{ t|=0; t = Math.imul(t ^ t>>>15, 1 | t); t += Math.imul(t ^ t>>>7, 61 | t); return ((t ^ t>>>14)>>>0) / 4294967296 } }
+function rndPick(key){ const arr = LEX.synonym[key]; return arr? arr[Math.floor(Math.random()*arr.length)] : key; }
+
+function makePoem(keyword, mood, lines){
+  const W = keyword && keyword.trim()? keyword.trim(): '그대';
+  const N = choice(LEX.baseNouns); const ADJ = choice(LEX.adj1[mood]);
+  const ADJ2 = choice(LEX.adj1[mood].filter(x=>x!==ADJ)) || ADJ; const VERB1 = choice(LEX.verbs1); const VERB2 = choice(LEX.verbs2);
+  const pool = TEMPLATES[mood]; const templates = shuffle(pool).slice(0, Math.max(3, Math.min(6, lines+1)));
+  const out = templates.slice(0, lines).map(t=>
+    t.replaceAll('{W}', W)
+     .replaceAll('{I}', withJosa(W,'이/가'))
+     .replaceAll('{E}', withJosa(W,'은/는'))
+     .replaceAll('{R}', withJosa(W,'을/를'))
+     .replaceAll('{N}', N)
+     .replaceAll('{ADJ}', ADJ)
+     .replaceAll('{ADJ2}', ADJ2)
+     .replaceAll('{VERB1}', VERB1)
+     .replaceAll('{VERB2}', VERB2)
+     .replaceAll('{TODAY}', rndPick('오늘'))
+     .replaceAll('{SILENT}', rndPick('조용히'))
+     .replaceAll('{HEART}', rndPick('마음'))
+  );
+  if(out.length){ out[out.length-1] = choice([out[out.length-1], LEX.closers[mood][Math.floor(Math.random()*LEX.closers[mood].length)]]); }
+  return out;
+}
+
+// ===================== 배경(그라디언트) =====================
+const PALETTES={
+  calm:{ A:['#0b1022','#113457','#0b2238'], B:['#081018','#16303f','#0a1e2a'], C:['#0a0f1c','#1a2740','#0f1a2b'] },
+  warm:{ A:['#1f1020','#442012','#3a1208'], B:['#26120a','#3b2411','#4b1f0c'], C:['#200f0a','#3a1b12','#4a2614'] },
+  pray:{ A:['#0f0e1a','#2a1c46','#1a1431'], B:['#0e0d19','#251a3f','#17122e'], C:['#0d0c18','#211939','#16122b'] }
+};
+function hashSeed(seed, ...keys){
+  let h = seed>>>0; for(const key of keys){ for(let i=0;i<key.length;i++){ h = Math.imul(h ^ key.charCodeAt(i), 2654435761) >>> 0; } }
+  return h>>>0;
+}
+function hexToHsl(hex){
+  const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex); if(!m) return [0,0,0];
+  let r=parseInt(m[1],16)/255, g=parseInt(m[2],16)/255, b=parseInt(m[3],16)/255;
+  const max=Math.max(r,g,b), min=Math.min(r,g,b); let h,s,l=(max+min)/2;
+  if(max===min){ h=s=0; } else { const d=max-min; s=l>0.5? d/(2-max-min): d/(max+min);
+    switch(max){ case r: h=(g-b)/d+(g<b?6:0); break; case g: h=(b-r)/d+2; break; case b: h=(r-g)/d+4; break; }
+    h/=6;
+  }
+  return [Math.round(h*360), Math.round(s*100), Math.round(l*100)];
+}
+function hslToHex(h,s,l){
+  h=((h%360)+360)%360; s=Math.max(0,Math.min(100,s)); l=Math.max(0,Math.min(100,l));
+  s/=100; l/=100; const c=(1-Math.abs(2*l-1))*s; const x=c*(1-Math.abs((h/60)%2-1)); const m=l-c/2;
+  let r=0,g=0,b=0; if(h<60){r=c;g=x;} else if(h<120){r=x;g=c;} else if(h<180){g=c;b=x;} else if(h<240){g=x;b=c;} else if(h<300){r=x;b=c;} else {r=c;b=x;}
+  const toHex=v=>('0'+Math.round((v+m)*255).toString(16)).slice(-2);
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+}
+function jitterHex(hex, rng, dh=10, ds=6, dl=6){
+  let [h,s,l]=hexToHsl(hex);
+  h += Math.floor((rng()*2-1)*dh);
+  s += Math.floor((rng()*2-1)*ds);
+  l += Math.floor((rng()*2-1)*dl);
+  return hslToHex(h,s,l);
+}
+function shiftHex(hex, dh=0, ds=0, dl=0){
+  let [h,s,l]=hexToHsl(hex);
+  return hslToHex(h+dh, s+ds, l+dl);
+}
+function variantAngleBase(variant){ return {A:120, B:160, C:200}[variant] || 140; }
+function cssGradient(mood,variant,seed){
+  const base = PALETTES[mood][variant];
+  const vseed = hashSeed(seed||0, mood, variant);
+  const rng = seededRand(vseed);
+  // pick one of 4 schemes deterministically by seed
+  const scheme = Math.floor(rng()*4);
+  let b0=base[0], b1=base[1], b2=base[2];
+  switch(scheme){
+    case 1: // analogous
+      b0=shiftHex(b0, 12, 4, 0); b1=shiftHex(b1, 18, 6, 2); b2=shiftHex(b2, 24, 8, 0); break;
+    case 2: // triadic-ish
+      b0=shiftHex(b0,120, 0, 0); b1=shiftHex(b1,120, 0, 0); b2=shiftHex(b2,120, 0, 0); break;
+    case 3: // complementary
+      b0=shiftHex(b0,180, 0, 0); b1=shiftHex(b1,170, 0, 0); b2=shiftHex(b2,190, 0, 0); break;
+    default: // base
+      break;
+  }
+  const angle = variantAngleBase(variant) + Math.floor((rng()*2-1)*20);
+  const c0=jitterHex(b0, rng, 10,8,8), c1=jitterHex(b1, rng, 10,8,8), c2=jitterHex(b2, rng, 10,8,8);
+  return `linear-gradient(${angle}deg, ${c0}, ${c1} 60%, ${c2})`;
+}
+function paintGradient(ctx, W, H, mood, variant, seed){
+  const base = PALETTES[mood][variant];
+  const vseed = hashSeed(seed||0, mood, variant);
+  const rng = seededRand(vseed);
+  const scheme = Math.floor(rng()*4);
+  let b0=base[0], b1=base[1], b2=base[2];
+  switch(scheme){
+    case 1: b0=shiftHex(b0, 12, 4, 0); b1=shiftHex(b1, 18, 6, 2); b2=shiftHex(b2, 24, 8, 0); break;
+    case 2: b0=shiftHex(b0,120, 0, 0); b1=shiftHex(b1,120, 0, 0); b2=shiftHex(b2,120, 0, 0); break;
+    case 3: b0=shiftHex(b0,180, 0, 0); b1=shiftHex(b1,170, 0, 0); b2=shiftHex(b2,190, 0, 0); break;
+    default: break;
+  }
+  const angle = (variantAngleBase(variant) + Math.floor((rng()*2-1)*20)) * Math.PI/180;
+  const c0=jitterHex(b0, rng, 10,8,8), c1=jitterHex(b1, rng, 10,8,8), c2=jitterHex(b2, rng, 10,8,8);
+  const cx=W/2, cy=H/2, r=Math.sqrt(W*W+H*H)/2;
+  const x1=cx + Math.cos(angle+Math.PI)*r, y1=cy + Math.sin(angle+Math.PI)*r;
+  const x2=cx + Math.cos(angle)*r,        y2=cy + Math.sin(angle)*r;
+  const g=ctx.createLinearGradient(x1,y1,x2,y2);
+  g.addColorStop(0,c0); g.addColorStop(.6,c1); g.addColorStop(1,c2); ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  for(let i=0;i<4;i++){ const rx=W*rng(), ry=H*rng(), rr=220*(.5+rng()); const rg=ctx.createRadialGradient(rx,ry,8, rx,ry,rr); rg.addColorStop(0,'rgba(255,255,255,'+(0.05+.04*rng())+')'); rg.addColorStop(1,'rgba(255,255,255,0)'); ctx.fillStyle=rg; ctx.beginPath(); ctx.arc(rx,ry,rr,0,Math.PI*2); ctx.fill(); }
+}
+
+// ===================== 렌더링 =====================
+const poemsEl = document.getElementById('poems');
+const moodSel = document.getElementById('mood');
+const wordInput = document.getElementById('word');
+const lineSel = document.getElementById('lines');
+const seedInfo = document.getElementById('seedInfo');
+const moodTag = document.getElementById('moodTag');
+
+const MOOD_LABEL = {calm:'차분', warm:'따뜻', pray:'평온'};
+function currentMoodLabel(){ return MOOD_LABEL[moodSel.value]; }
+function updateMoodTag(){ moodTag.textContent = currentMoodLabel(); moodTag.className = 'accent-' + moodSel.value; }
+updateMoodTag();
+
+function generateAll(seed){
+  const lines = parseInt(lineSel.value,10);
+  const mood = moodSel.value;
+  const W = wordInput.value.trim()||'그대';
+  const rand = (seed ?? Math.floor(Date.now() % 1e9)) >>> 0; CURRENT_SEED = rand; seedInfo.textContent = 'seed: ' + rand;
+
+  const frag = document.createDocumentFragment();
+  ['A','B','C'].forEach(tag=>{
+    const poem = makePoem(W, mood, lines);
+    const card = renderPoemCard(tag, W, mood, poem, rand);
+    card.classList.add('variant-'+tag.toLowerCase());
+    frag.appendChild(card);
+  });
+  poemsEl.innerHTML='';
+  poemsEl.appendChild(frag);
+}
+
+function renderPoemCard(tag, W, mood, lines, seed){
+  const card = document.createElement('div'); card.className = 'poem-card';
+  card.style.background = cssGradient(mood, tag, seed);
+  const badge = document.createElement('div'); badge.className='side-badge'; badge.textContent = (VAR_LABEL[tag] || tag); card.appendChild(badge);
+  const inner = document.createElement('div'); inner.className='poem-inner';
+
+  const title = document.createElement('div'); title.className = 'poem-title';
+  title.innerHTML = `<span class="accent-${mood}">${currentMoodLabel()}</span> · 키워드: <em>${escapeHtml(W)}</em>`;
+  const text = document.createElement('div'); text.className = 'poem-text'; text.textContent = lines.join('\n');
+
+  inner.append(title, text); card.append(inner); return card;
+}
+
+function escapeHtml(s){ return s?.replace(/[&<>\"]+/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[m])) || '' }
+
+// ===================== 초기화 & 테스트 =====================
+const gen = ()=> generateAll();
+document.getElementById('gen').addEventListener('click', gen);
+wordInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ generateAll(); }});
+moodSel.addEventListener('change', updateMoodTag);
+
+setTimeout(()=>generateAll(), 60);
+
+// 위치 최적화: 첫 렌더 이후 레이아웃 안정화(폰트 로드 지터 최소)
+requestAnimationFrame(()=>{
+  document.querySelectorAll('.poem-card').forEach(el=>{ el.style.willChange = 'auto'; });
+});
+
+// --- 테스트 (PNG 제거 후 갱신) ---
+(function runTests(){
+  const report = document.getElementById('test-report');
+  const results = [];
+  function ok(name, pass, info=''){ results.push({name, pass:!!pass, info}); }
+
+  // T1: generateAll 후 카드 3개 렌더
+  try{
+    generateAll(123);
+    const n = document.querySelectorAll('.poem-card').length; ok('T1 renders 3 cards', n===3, 'count='+n);
+  }catch(e){ ok('T1 renders 3 cards', false, e.message); }
+
+  // T2: 시 줄 수 보장
+  try{ const p = makePoem('키워드','warm',5); ok('T2 poem length=5', Array.isArray(p)&&p.length===5, 'len='+(p&&p.length)); }
+  catch(e){ ok('T2 poem length=5', false, e.message); }
+
+  // T3: 무드 라벨/클래스 갱신
+  try{ moodSel.value='pray'; updateMoodTag(); ok('T3 mood label', document.getElementById('moodTag').textContent==='평온'); }
+  catch(e){ ok('T3 mood label', false, e.message); }
+
+  // T4: 그라디언트 시드 결정성
+  try{
+    const g1 = cssGradient('calm','A', 111);
+    const g2 = cssGradient('calm','A', 111);
+    ok('T4 deterministic gradient by seed', g1===g2);
+  }catch(e){ ok('T4 deterministic gradient by seed', false, e.message); }
+
+  // T5: 버전별 차별성(같은 시드여도 A!=B)
+  try{
+    const ga = cssGradient('calm','A', 222);
+    const gb = cssGradient('calm','B', 222);
+    ok('T5 variants likely differ', ga!==gb);
+  }catch(e){ ok('T5 variants likely differ', false, e.message); }
+
+  // T6: 본문 폰트가 15px인지 확인
+  try{
+    const el = document.querySelector('.poem-text');
+    const size = parseFloat(getComputedStyle(el).fontSize);
+    ok('T6 poem text font-size == 15px', Math.abs(size-15) < 0.6, 'size='+size);
+  }catch(e){ ok('T6 poem text font-size >= 20px', false, e.message); }
+
+  // T7: paintGradient가 정상적으로 실행되는지 확인 (이슈 재발 방지)
+  try{
+    const c = document.createElement('canvas'); c.width=100; c.height=100; const ctx=c.getContext('2d');
+    paintGradient(ctx, 100, 100, 'calm', 'A', 555);
+    ok('T7 paintGradient callable', true);
+  }catch(e){ ok('T7 paintGradient callable', false, e.message); }
+
+  // T8: 본문 line-height가 1.45~1.6 비율인지 확인
+  try{
+    const el2 = document.querySelector('.poem-text');
+    const size2 = parseFloat(getComputedStyle(el2).fontSize);
+    const lh2 = parseFloat(getComputedStyle(el2).lineHeight);
+    const ratio = lh2 / size2;
+    ok('T8 poem text line-height ≈1.5', ratio >= 1.45 && ratio <= 1.6, 'ratio='+ratio.toFixed(2));
+  }catch(e){ ok('T8 poem text line-height', false, e.message); }
+
+  // T9: currentMoodLabel가 올바른 라벨을 반환하는지
+  try{
+    moodSel.value='calm'; updateMoodTag();
+    const v1 = currentMoodLabel();
+    moodSel.value='warm'; updateMoodTag();
+    const v2 = currentMoodLabel();
+    moodSel.value='pray'; updateMoodTag();
+    const v3 = currentMoodLabel();
+    ok('T9 currentMoodLabel returns label', v1==='차분' && v2==='따뜻' && v3==='평온', `${v1},${v2},${v3}`);
+  }catch(e){ ok('T9 currentMoodLabel returns label', false, e.message); }
+
+  // T10: adj1 형용사 사전이 올바른 형태인지 (문장 템플릿 문법 기호가 없어야 함)
+  try{
+    const moods=['calm','warm','pray'];
+    const okAdj = moods.every(m=>Array.isArray(LEX.adj1[m]) && LEX.adj1[m].length>0 && LEX.adj1[m].every(s=>typeof s==='string' && !/[{}]/.test(s)));
+    ok('T10 adj1 is adjective list', okAdj);
+  }catch(e){ ok('T10 adj1 is adjective list', false, e.message); }
+
+  const passN=results.filter(r=>r.pass).length, failN=results.length-passN;
+  report.textContent = `테스트: ${passN} 통과, ${failN} 실패`;
+  if(failN){ console.table(results); }
+})();
+</script>
+</body>
+</html>
