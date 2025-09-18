@@ -145,20 +145,7 @@ window.addEventListener('hashchange', route); window.addEventListener('load', ro
 function forwardSearchToActive(q){ const {path}=parseHash(); if(path==='/page1') runSearchInFrame($('#frame-p1'), q); else if(path==='/page2') runSearchInFrame($('#frame-p2'), q); else { location.hash = '#/page1'; setTimeout(()=> runSearchInFrame($('#frame-p1'), q), 200); } }
 function injectBridge(iframe){ if(!iframe||!iframe.contentWindow) return; const doc=iframe.contentDocument||iframe.contentWindow.document; if(!doc || doc.__aimapBridged) return; doc.__aimapBridged=true;
   const s=doc.createElement('style'); 
-                              s.textContent='
-                                :root{scrollbar-color:#4b5563 transparent} 
-                              body{background:transparent !important} 
-                              header{position:sticky;top:0 }  /* 자식 영역이 잘리지 않도록 오버라이드 */
-                              #tree > div > div.children{
-                                  max-height:none !important;
-                                  height:auto !important;
-                                  overflow:visible !important;
-                              }
-                              /* 트리 전체는 스크롤 허용 (페이지 레이아웃 유지) */
-                              #tree{
-                                max-height:calc(100vh - 220px);
-                                overflow:auto;
-                              }';
+                              s.textContent=' :root{scrollbar-color:#4b5563 transparent}                               body{background:transparent !important}                               header{position:sticky;top:0 } #tree > div > div.children{max-height:none !important;height:auto !important;overflow:visible !important;}#tree{max-height:calc(100vh - 220px);overflow:auto;}';
   doc.head.appendChild(s);
   let live = doc.getElementById('sr-live') || doc.getElementById('live') || doc.createElement('div'); live.id = live.id || 'sr-live'; live.setAttribute('style','position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)'); live.setAttribute('aria-live','polite'); if(!live.parentNode) doc.body.appendChild(live);
   doc.__bridge = { search(q){ const input=doc.getElementById('q'); if(input){ input.value=q; input.dispatchEvent(new Event('input',{bubbles:true})); } const live=doc.getElementById('sr-live')||doc.getElementById('live'); if(live) live.textContent='검색 실행: '+q; }, click(id){ const el=doc.getElementById(id); if(el) el.click(); } };
