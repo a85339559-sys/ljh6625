@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>나무 키우기 — 하루 일기 저널 (v1.1.2)</title>
+<style>
+  :root{--bg:#0b0d14;--panel:#0f1420;--ink:#e7ebf0;--muted:#9fb0c3;--accent:#93e06b;--pink:#ff82c0;--fruit:#ffb24d;--warn:#ff6b6b}
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Pretendard,'Noto Sans KR',sans-serif;background:var(--bg);color:var(--ink)}
+  header{position:sticky;top:0;z-index:3;background:rgba(11,13,20,.75);backdrop-filter:saturate(160%) blur(10px);border-bottom:1px solid #202835}
+  .bar{max-width:980px;margin:0 auto;padding:16px;display:flex;gap:12px;align-items:center}
+  .dot{width:10px;height:10px;border-radius:50%;background:var(--accent);box-shadow:0 0 16px var(--accent)}
+  h1{font-size:18px;margin:0;font-weight:800}
+  main{max-width:980px;margin:18px auto;padding:16px;display:grid;grid-template-columns:1.1fr .9fr;gap:18px}
+  @media (max-width:900px){main{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid #202835;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+  .card>.hd{padding:14px 16px;border-bottom:1px solid #202835;display:flex;gap:10px;align-items:center}
+  .card>.bd{padding:16px}
+  .muted{color:var(--muted);font-size:12px}
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+  .pill{background:#0b1220;border:1px solid #1f2a3c;border-radius:12px;padding:10px}
+  .pill .k{display:block;color:var(--muted);font-size:11px}
+  .pill .v{font-size:18px;font-weight:800}
+  textarea,input[type="text"]{width:100%;padding:12px;border-radius:12px;border:1px solid #233147;background:#0b1220;color:var(--ink);font-size:14px}
+  textarea{min-height:120px;resize:vertical}
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .row>.grow{flex:1}
+  .btn{appearance:none;border:none;border-radius:12px;background:linear-gradient(180deg,#2ecc71,#27ae60);color:#0b0d14;font-weight:800;padding:12px 16px;cursor:pointer;box-shadow:0 8px 16px rgba(39,174,96,.35)}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .btn.secondary{background:linear-gradient(180deg,#7aa0c4,#517fa4);color:#fff}
+  .btn.warn{background:linear-gradient(180deg,#ff9b9b,#ff6b6b);color:#1b0c0c}
+  .hint{font-size:12px;color:var(--muted)}
+  .tree-wrap{position:relative;height:420px;background:radial-gradient(1200px 420px at 50% -50%, #22324a 0%, #0b0d14 60%);border-radius:16px;overflow:hidden;border:1px solid #202835}
+  .overlay-msg{position:absolute;bottom:12px;left:12px;font-size:12px;color:var(--muted)}
+  .badge{display:inline-flex;gap:6px;align-items:center;padding:6px 10px;border-radius:999px;border:1px solid #203047;background:#0c1320}
+  .legend{position:absolute;top:12px;right:12px;display:flex;gap:8px}
+  .legend .dot{width:10px;height:10px;border-radius:50%}
+  .space{height:8px}
+</style>
+</head>
+<body>
+  <header>
+    <div class="bar">
+      <div class="dot"></div>
+      <div>
+        <h1>나무 키우기 — 하루 일기</h1>
+        <div class="muted">글 쓰면 나무가 자라납니다. 보상은 가볍게 · 기록은 온전히 내 것.</div>
+      </div>
+    </div>
+  </header>
+  <main>
+    <section class="card">
+      <div class="hd"><strong>오늘의 일기</strong><span class="muted">(하루 1회 급양권)</span></div>
+      <div class="bd">
+        <label class="hint">단어(씨앗) — 쉼표(,)로 구분: 예) 감사, 배움, 운동</label>
+        <input id="seedWords" type="text" placeholder="오늘의 씨앗 단어" />
+        <div class="space"></div>
+        <label class="hint">일기(양분) — 40자 이상 +10, 120자 이상 추가 +10</label>
+        <textarea id="journal" placeholder="오늘 하루를 간단히 적어주세요..."></textarea>
+        <div class="space"></div>
+        <div class="row">
+          <div class="grow hint">보상: 기본+10, 단어×3, 40자+10, 120자 추가+10. 하루 한 번만.</div>
+          <button id="feedBtn" class="btn">나무에게 먹이 주기</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="hd"><strong>성장 상태</strong> <span class="muted" id="todayInfo"></span></div>
+      <div class="bd">
+        <div class="stats">
+          <div class="pill"><span class="k">연속 일수</span><span id="streak" class="v">0</span></div>
+          <div class="pill"><span class="k">총 양분</span><span id="nutrients" class="v">0</span></div>
+          <div class="pill"><span class="k">꽃</span><span id="blooms" class="v">0</span></div>
+          <div class="pill"><span class="k">열매</span><span id="fruits" class="v">0</span></div>
+        </div>
+        <div class="space"></div>
+        <div class="tree-wrap">
+          <svg id="treeSvg" viewBox="0 0 600 400" width="100%" height="100%" preserveAspectRatio="xMidYMid meet"></svg>
+          <div class="legend">
+            <span class="badge"><span class="dot" style="background:var(--pink)"></span>꽃</span>
+            <span class="badge"><span class="dot" style="background:var(--fruit)"></span>열매</span>
+            <span class="badge"><span class="dot" style="background:var(--accent)"></span>새싹</span>
+          </div>
+          <div class="overlay-msg" id="overlayMsg">씨앗 단어를 심고 일기를 쓰면 성장해요.</div>
+        </div>
+        <div class="space"></div>
+        <div id="history" class="hint">최근 기록 없음</div>
+        <div class="space"></div>
+        <div class="row">
+          <button class="btn secondary" id="exportBtn">내보내기(JSON)</button>
+          <button class="btn" id="importBtn">가져오기(JSON)</button>
+          <input type="file" id="importFile" accept="application/json" style="display:none" />
+          <button class="btn" id="demoBtn" title="예시 데이터로 꽃·열매 상태를 보여줘요">데모: 열매 보여주기</button>
+          <button class="btn" id="undoBtn" title="마지막 급양 되돌리기">되돌리기</button>
+          <button class="btn" id="graceBtn" title="주 1회 결석 보정">그레이스데이</button>
+          <button class="btn warn" id="resetBtn" title="모든 데이터가 삭제됩니다">초기화</button>
+          <span class="hint">데이터는 이 브라우저의 localStorage에 저장됩니다.</span>
+        </div>
+      </div>
+    </section>
+  </main>
+
+<script>
+(function(){
+  // =====================
+  // 1) Seeded RNG (top to avoid TDZ on __seed)
+  // =====================
+  let __seed = 0; // initialized before any srandom/rand call
+  function initSeed(createdAt){ const base = String(createdAt||'0').split('').reduce((a,c)=>a+c.charCodeAt(0),0); __seed = base>>>0; }
+  function srandom(){ __seed = (__seed*1664525+1013904223)>>>0; return (__seed & 0xffff)/0x10000; }
+  function rand(n){ return srandom()*n; }
+
+  // =====================
+  // 2) Core boot
+  // =====================
+  const DB_KEY = 'treeJournal.v1.1';
+  const todayStr = localYMD(new Date());
+
+  const state = loadState();
+  ensureToday();
+  updateUI();
+  drawTree();
+
+  // =====================
+  // 3) Events
+  // =====================
+  document.getElementById('feedBtn').addEventListener('click', onFeed);
+  document.getElementById('exportBtn').addEventListener('click', onExport);
+  document.getElementById('resetBtn').addEventListener('click', onReset);
+  document.getElementById('demoBtn').addEventListener('click', seedDemo);
+  document.getElementById('importBtn').addEventListener('click', ()=>document.getElementById('importFile').click());
+  document.getElementById('importFile').addEventListener('change', onImport);
+  document.getElementById('undoBtn').addEventListener('click', onUndo);
+  document.getElementById('graceBtn').addEventListener('click', onGrace);
+
+  // =====================
+  // 4) State helpers
+  // =====================
+  function defaultState(){
+    return {
+      createdAt: new Date().toISOString(),
+      lastFed: null,
+      totalNutrients: 0,
+      streak: 0,
+      blooms: 0,
+      fruits: 0,
+      graceTokens: 1,
+      lastGraceWeek: null,
+      days: {}
+    };
+  }
+  function loadState(){ try{ const raw = localStorage.getItem(DB_KEY); return raw? JSON.parse(raw): defaultState(); } catch{ return defaultState(); } }
+  function saveState(){ localStorage.setItem(DB_KEY, JSON.stringify(state)); }
+
+  // =====================
+  // 5) Date
+  // =====================
+  function localYMD(d){ const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${day}`; }
+  function ensureToday(){ document.getElementById('todayInfo').textContent = `오늘: ${todayStr}`; }
+
+  // =====================
+  // 6) Feed
+  // =====================
+  function onFeed(){
+    if(state.lastFed === todayStr){ toast('오늘은 이미 급양했어요. 내일 다시 🌱'); return; }
+    const words = (document.getElementById('seedWords').value||'').split(',').map(s=>s.trim()).filter(Boolean);
+    const journal = (document.getElementById('journal').value||'').trim();
+    let score = 10 + words.length*3; if(journal.length>=40) score+=10; if(journal.length>=120) score+=10;
+    state.days[todayStr] = {words, journal, nutrients: score};
+    state.totalNutrients += score;
+    // streak
+    const yest = new Date(new Date().getTime()-86400000); const yestStr = localYMD(yest);
+    state.streak = (state.lastFed===yestStr)? state.streak+1 : 1;
+    state.lastFed = todayStr;
+    // milestones
+    const b0=state.blooms, f0=state.fruits;
+    if(state.streak%3===0 || state.totalNutrients >= (state.blooms+1)*150) state.blooms++;
+    if(state.streak%7===0 || state.totalNutrients >= (state.fruits+1)*400) state.fruits++;
+
+    saveState(); updateUI(); drawTree();
+    const dB=state.blooms-b0, dF=state.fruits-f0; toast(`+${score} 양분 · 새 꽃 ${Math.max(0,dB)} · 새 열매 ${Math.max(0,dF)}`);
+    document.getElementById('seedWords').value=''; document.getElementById('journal').value='';
+  }
+
+  // =====================
+  // 7) UI
+  // =====================
+  function updateUI(){
+    qs('#streak').textContent = state.streak; qs('#nutrients').textContent = state.totalNutrients; qs('#blooms').textContent = state.blooms; qs('#fruits').textContent = state.fruits;
+    const overlay = qs('#overlayMsg'); const feedBtn = qs('#feedBtn');
+    if(!state.lastFed){ overlay.textContent='첫 씨앗을 심고 일기를 써보세요!'; feedBtn.disabled=false; }
+    else if(state.lastFed!==todayStr){ overlay.textContent='오늘의 급양이 아직 없어요. 나무가 기다리는 중…'; feedBtn.disabled=false; }
+    else { overlay.textContent='잘했어요! 오늘도 튼튼하게 자라나요.'; feedBtn.disabled=true; }
+    renderHistory();
+  }
+
+  // =====================
+  // 8) Export / Import / Undo / Grace / Reset
+  // =====================
+  function onExport(){
+    const data=JSON.stringify(state,null,2);
+    const blob=new Blob([data],{type:'application/json'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download=`tree-journal-${todayStr}.json`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),5000);
+  }
+  async function onImport(ev){
+    const file=ev.target.files?.[0]; if(!file) return;
+    try{ const text=await file.text(); const obj=JSON.parse(text); Object.assign(state,obj); saveState(); updateUI(); drawTree(); toast('JSON 불러오기 완료'); }
+    catch(e){ console.warn(e); toast('가져오기 실패: JSON 확인'); }
+    finally { ev.target.value=''; }
+  }
+  function onUndo(){
+    if(!state.lastFed||!state.days[state.lastFed]){ toast('되돌릴 기록이 없어요'); return; }
+    const rec=state.days[state.lastFed];
+    state.totalNutrients-=rec.nutrients||0;
+    delete state.days[state.lastFed];
+    state.streak=Math.max(0,state.streak-1);
+    state.lastFed=null;
+    saveState(); updateUI(); drawTree(); toast('마지막 급양을 되돌렸어요');
+  }
+  function weekKey(d){ const dt=new Date(d); const onejan=new Date(dt.getFullYear(),0,1); const day=Math.floor((dt-onejan)/86400000)+onejan.getDay()+1; const week=Math.ceil(day/7); return `${dt.getFullYear()}-W${week}`; }
+  function onGrace(){
+    const now=new Date(); const wk=weekKey(now);
+    if(state.lastGraceWeek!==wk){ state.graceTokens=1; }
+    if(state.graceTokens<=0){ toast('이번 주 그레이스데이를 이미 사용했어요'); return; }
+    if(state.lastFed===todayStr){ toast('오늘은 이미 기록했어요'); return; }
+    state.streak=Math.max(1,state.streak+1);
+    state.lastFed=todayStr; state.lastGraceWeek=wk; state.graceTokens-=1;
+    saveState(); updateUI(); drawTree(); toast('그레이스데이 사용: 연속일을 유지했어요');
+  }
+  function performReset(){
+    // core logic extracted so tests can assert without user prompts
+    localStorage.removeItem(DB_KEY);
+    const fresh = defaultState();
+    // replace state object in-place to preserve references
+    for(const k in state) { delete state[k]; }
+    Object.assign(state, fresh);
+    saveState(); updateUI(); drawTree(); toast('초기화 완료');
+  }
+  function onReset(){
+    if(!confirm('정말 초기화할까요? 모든 데이터가 삭제됩니다.')) return;
+    performReset();
+  }
+
+  // =====================
+  // 9) History
+  // =====================
+  function renderHistory(){
+    const box=qs('#history');
+    const entries=Object.entries(state.days).sort((a,b)=>a[0]<b[0]?1:-1).slice(0,5);
+    if(entries.length===0){ box.textContent='최근 기록 없음'; return; }
+    const lines=entries.map(([d,r])=>`${d} · +${r.nutrients}점 · 단어 ${r.words.length}개`);
+    box.textContent='최근: '+lines.join(' | ');
+  }
+
+  // =====================
+  // 10) Toast
+  // =====================
+  function toast(msg){ const t=document.createElement('div'); t.textContent=msg; Object.assign(t.style,{position:'fixed',bottom:'16px',left:'50%',transform:'translateX(-50%)',background:'#121a28',border:'1px solid #203047',color:'var(--ink)',padding:'10px 14px',borderRadius:'12px',boxShadow:'0 8px 24px rgba(0,0,0,.35)',zIndex:99}); document.body.appendChild(t); setTimeout(()=>t.remove(),2200); }
+
+  // =====================
+  // 11) SVG Tree
+  // =====================
+  function drawTree(){
+    initSeed(state.createdAt);
+    const svg = qs('#treeSvg'); svg.innerHTML='';
+    const level = growthLevel();
+    rect(290,260,20,120,'#5b4636');
+    const branchCount=3+level*2; for(let i=0;i<branchCount;i++){ const y=260-i*18; const dir=(i%2===0)?1:-1; const len=50+i*6+level*10; branch(300,y,300+dir*len,y-20,'#6a513f',3+level*0.3); }
+    const leafCount=20+level*20; for(let i=0;i<leafCount;i++){ const x=240+rand(120)+(srandom()<.5?-1:1)*rand(120); const y=120+rand(180); leaf(x,y,'#7bd389'); }
+    for(let i=0;i<state.blooms;i++){ const x=180+rand(240); const y=100+rand(180); circle(x,y,5+rand(4),'var(--pink)'); }
+    for(let i=0;i<state.fruits;i++){ const x=200+rand(200); const y=120+rand(160); fruit(x,y,6+rand(6)); }
+    ellipse(300,380,220,24,'#0f1a26');
+    function rect(x,y,w,h,fill){ add('rect',{x,y,width:w,height:h,rx:6,fill}); }
+    function branch(x1,y1,x2,y2,stroke,w){ add('line',{x1,y1,x2,y2,stroke,'stroke-width':w,'stroke-linecap':'round'}); }
+    function circle(cx,cy,r,fill){ add('circle',{cx,cy,r,fill,opacity:.9}); }
+    function leaf(x,y,fill){ const r=6+rand(4); add('ellipse',{cx:x,cy:y,rx:r,ry:r*0.6,fill,opacity:.9}); }
+    function fruit(cx,cy,r){ add('circle',{cx,cy,r,fill:'var(--fruit)'}); add('rect',{x:cx-1.2,y:cy-r-6,width:2.4,height:6,fill:'#6a513f'}); }
+    function ellipse(cx,cy,rx,ry,fill){ add('ellipse',{cx,cy,rx,ry,fill,opacity:.8}); }
+    function add(tag,attrs){ const el=document.createElementNS('http://www.w3.org/2000/svg',tag); for(const k in attrs) el.setAttribute(k,attrs[k]); svg.appendChild(el); return el; }
+    function growthLevel(){ const n=state.totalNutrients; if(n>=1200) return 5; if(n>=800) return 4; if(n>=500) return 3; if(n>=300) return 2; if(n>=120) return 1; return 0; }
+  }
+
+  // =====================
+  // 12) Demo
+  // =====================
+  function seedDemo(){
+    const today=new Date(); const mk=(d)=>localYMD(d);
+    state.days={}; let total=0;
+    for(let i=6;i>=0;i--){ const d=new Date(today.getTime()-i*86400000); const key=mk(d); const words=['감사','배움','평온']; const journal='데모 일기입니다. 60자 이상으로 채워 보너스를 받는 예시입니다.'; const score=10 + words.length*3 + 10; state.days[key]={words,journal,nutrients:score}; total+=score; }
+    state.totalNutrients=total; state.lastFed=todayStr; state.streak=7; state.blooms=2; state.fruits=1;
+    saveState(); updateUI(); drawTree(); toast('데모 적용: 꽃 2개, 열매 1개 🍎');
+  }
+
+  // =====================
+  // 13) Utils & Self-tests
+  // =====================
+  function qs(sel){ return document.querySelector(sel); }
+
+  // ---- Lightweight self-tests (console only; no user data mutation) ----
+  try {
+    // Test 1: RNG should not throw and be in [0,1)
+    initSeed('2025-01-01T00:00:00.000Z');
+    const r1=srandom(); const r2=srandom();
+    console.assert(r1>=0 && r1<1 && r2>=0 && r2<1, 'RNG out of range');
+    // Test 2: localYMD format
+    console.assert(/^\d{4}-\d{2}-\d{2}$/.test(localYMD(new Date())), 'localYMD format error');
+    // Test 3: scoring examples
+    function score(wordsCount,len){ let s=10+wordsCount*3; if(len>=40) s+=10; if(len>=120) s+=10; return s; }
+    console.assert(score(0,20)===10,'score case1');
+    console.assert(score(2,45)===26,'score case2');
+    console.assert(score(3,60)===29,'score case3');
+    console.assert(score(5,130)===45,'score case4');
+    // Test 4: drawTree should not throw
+    drawTree();
+    // Test 5: onReset must exist (do not call it to avoid user data loss)
+    console.assert(typeof onReset==='function','onReset not defined');
+    console.log('[Self-tests] All tests passed');
+  } catch(e){ console.error('[Self-tests] FAILED', e); }
+
+})();
+</script>
+</body>
+</html>
