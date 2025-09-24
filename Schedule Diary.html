@@ -1,0 +1,532 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>하루생활 도우미 — To‑Do · 타이머 · 지출 · 한줄일기</title>
+<style>
+  :root{
+    --bg:#0b0d14; --card:#111826; --muted:#9fb0c3; --text:#e7ebf0; --accent:#7aa2ff; --accent-2:#6ee7b7; --danger:#f87171; --warning:#fbbf24;
+    --border:#202835; --shadow: 0 8px 30px rgba(0,0,0,.35);
+  }
+  @media (prefers-color-scheme: light){:root{--bg:#f6f7fb;--card:#ffffff;--text:#0b0d14;--muted:#4b5563;--border:#e5e7eb;--shadow:0 6px 20px rgba(2,6,23,.08)}}
+  html,body{height:100%}
+  body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Pretendard,'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text)}
+  header{position:sticky;top:0;z-index:5;background:rgba(11,13,20,.7);backdrop-filter:saturate(160%) blur(10px);border-bottom:1px solid var(--border)}
+  @media (prefers-color-scheme: light){header{background:rgba(255,255,255,.7)}}
+  .bar{max-width:980px;margin:0 auto;padding:12px 16px;display:flex;gap:10px;align-items:center}
+  .brand{display:flex;gap:10px;align-items:center}
+  .logo{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent-2));box-shadow:var(--shadow)}
+  nav{display:flex;gap:8px;flex-wrap:wrap}
+  nav button{appearance:none;border:1px solid var(--border);background:var(--card);color:var(--text);padding:8px 12px;border-radius:10px;cursor:pointer}
+  nav button[aria-current="page"]{outline:2px solid var(--accent)}
+  .wrap{max-width:980px;margin:22px auto;padding:0 16px 60px;}
+  .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}
+  .card{grid-column:span 12;background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow)}
+  .card h2{margin:0 0 8px 0;font-size:18px}
+  .pad{padding:14px 16px}
+  .muted{color:var(--muted);font-size:13px}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .input, textarea{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--text)}
+  .btn{appearance:none;border:1px solid var(--border);background:var(--card);color:var(--text);padding:9px 12px;border-radius:10px;cursor:pointer}
+  .btn.primary{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#081018;border:none}
+  .btn.danger{border-color:transparent;background:linear-gradient(135deg,#ef4444,#f59e0b);color:#fff}
+  .list{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+  .item{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:10px 12px;border:1px solid var(--border);border-radius:12px}
+  .item.done{opacity:.55;text-decoration:line-through}
+  .pill{font-size:12px;border:1px solid var(--border);padding:3px 8px;border-radius:999px}
+  .kpi{display:flex;gap:12px;flex-wrap:wrap}
+  .kpi .box{flex:1 1 140px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px}
+  .center{display:flex;justify-content:center;align-items:center}
+  .timer{font-variant-numeric:tabular-nums;font-size:40px;font-weight:700}
+  .tab{display:none}
+  .tab[aria-hidden="false"]{display:block}
+  .small{font-size:12px}
+  .right{margin-left:auto}
+  .table{width:100%;border-collapse:separate;border-spacing:0 8px}
+  .table td{background:transparent;padding:6px 8px}
+  .table tr{border:1px solid var(--border)}
+  .table tr td:first-child{border-radius:10px 0 0 10px}
+  .table tr td:last-child{border-radius:0 10px 10px 0}
+  footer{position:fixed;bottom:0;left:0;right:0;display:flex;justify-content:center;padding:10px}
+  .savehint{font-size:12px;color:var(--muted);background:rgba(0,0,0,.2);padding:6px 10px;border-radius:10px;border:1px solid var(--border)}
+  @media (min-width:780px){
+    .col-6{grid-column:span 6}
+    .col-4{grid-column:span 4}
+    .col-8{grid-column:span 8}
+  }
+</style>
+</head>
+<body>
+<header role="banner">
+  <div class="bar">
+    <div class="brand" aria-label="하루생활 도우미">
+      <div class="logo" aria-hidden="true"></div>
+      <strong>하루생활 도우미</strong>
+      <span class="muted small">로컬 저장 · 오프라인 사용</span>
+    </div>
+    $1
+      <button class="tabbtn" data-tab="alarm" aria-controls="tab-alarm">알람</button>
+      <button class="tabbtn" data-tab="money" aria-controls="tab-money">지출</button>
+      <button class="tabbtn" data-tab="note" aria-controls="tab-note">한줄일기</button>
+      <button class="tabbtn" data-tab="settings" aria-controls="tab-settings" title="백업/복원">설정</button>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <!-- 오늘 탭 -->
+  <section id="tab-today" class="tab" aria-hidden="false">
+    <div class="grid">
+      <div class="card pad col-8">
+        <h2>오늘 한 눈에</h2>
+        <div class="kpi" id="kpi">
+          <div class="box" aria-live="polite"><div class="muted small">완료한 할 일</div><div id="kpi-done" style="font-size:22px;font-weight:700">0</div></div>
+          <div class="box" aria-live="polite"><div class="muted small">오늘 지출</div><div id="kpi-spent" style="font-size:22px;font-weight:700">₩0</div></div>
+          <div class="box" aria-live="polite"><div class="muted small">물 마시기</div><div><progress id="water" value="0" max="8" style="width:120px"></progress> <span class="small" id="water-label">0/8잔</span></div></div>
+        </div>
+        <div class="row" style="margin-top:10px">
+          <button class="btn" id="btn-water">물 1잔 추가</button>
+          <button class="btn" id="btn-reset-water" title="오늘 물 기록 초기화">초기화</button>
+        </div>
+      </div>
+      <div class="card pad col-4">
+        <h2>오늘의 한 줄</h2>
+        <div class="row">
+          <input id="today-line" class="input" placeholder="오늘을 한 줄로 요약해보세요" aria-label="오늘 한줄 입력" />
+          <button class="btn primary" id="save-today">저장</button>
+        </div>
+        <div class="muted small" style="margin-top:6px">어제: <span id="yesterday-line">—</span></div>
+      </div>
+      <div class="card pad col-6">
+        <h2>빠른 할 일</h2>
+        <div class="row">
+          <input id="qtask" class="input" placeholder="할 일을 입력하고 Enter" aria-label="빠른 할 일" />
+          <button class="btn" id="add-qtask">추가</button>
+        </div>
+        <div id="quick-list" class="list" aria-live="polite"></div>
+      </div>
+      <div class="card pad col-6">
+        <h2>빠른 지출</h2>
+        <div class="row">
+          <input id="qmemo" class="input" placeholder="메모 (예: 점심)" aria-label="지출 메모" />
+          <input id="qamount" class="input" inputmode="numeric" placeholder="금액" aria-label="지출 금액" />
+          <button class="btn" id="add-qspent">기록</button>
+        </div>
+        <table class="table" aria-label="오늘 지출 목록"><tbody id="spent-today"></tbody></table>
+      </div>
+    </div>
+  </section>
+
+  <!-- 할 일 탭 -->
+  <section id="tab-todo" class="tab" aria-hidden="true">
+    <div class="card pad">
+      <h2>할 일 목록</h2>
+      <div class="row">
+        <input id="task-input" class="input" placeholder="할 일을 입력" aria-label="할 일" />
+        <select id="task-priority" class="input" aria-label="우선순위">
+          <option value="보통">보통</option>
+          <option value="높음">높음</option>
+          <option value="낮음">낮음</option>
+        </select>
+        <input id="task-date" class="input" type="date" aria-label="기한" />
+        <button class="btn primary" id="add-task">추가</button>
+        <button class="btn" id="clear-done" title="완료 항목 삭제">완료 삭제</button>
+      </div>
+      <div id="task-list" class="list" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <!-- 타이머 탭 -->
+  <section id="tab-timer" class="tab" aria-hidden="true">
+    <div class="grid">
+      <div class="card pad col-6">
+        <h2>포모도로 타이머</h2>
+        <div class="center" style="gap:12px;flex-direction:column">
+          <div class="timer" id="clock">25:00</div>
+          <div class="row">
+            <button class="btn" id="start">시작</button>
+            <button class="btn" id="pause">일시정지</button>
+            <button class="btn" id="reset">초기화</button>
+          </div>
+          <div class="row small">
+            작업: <input id="pomodoro-min" type="number" min="1" value="25" class="input" style="width:90px"> 분
+            휴식: <input id="break-min" type="number" min="1" value="5" class="input" style="width:90px"> 분
+            <button class="btn" id="apply-timer">적용</button>
+          </div>
+          <audio id="beep" preload="auto">
+            <source src="data:audio/mp3;base64,//uQZAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAACcQB..." type="audio/mp3"/>
+          </audio>
+        </div>
+      </div>
+      <div class="card pad col-6">
+        <h2>세션 기록</h2>
+        <div id="session-log" class="list" aria-live="polite"></div>
+        <button class="btn" id="clear-log">기록 비우기</button>
+      </div>
+    </div>
+  </section>
+  <!-- 알람 탭 -->
+  <section id="tab-alarm" class="tab" aria-hidden="true">
+    <div class="card pad">
+      <h2>알람</h2>
+      <div class="row">
+        <input id="alarm-title" class="input" placeholder="알람 제목 (예: 약 먹기)" aria-label="알람 제목">
+        <input id="alarm-dt" class="input" type="datetime-local" aria-label="알람 날짜와 시간">
+        <select id="alarm-repeat" class="input" aria-label="반복" style="max-width:160px">
+          <option value="none">반복 없음</option>
+          <option value="daily">매일</option>
+          <option value="weekdays">평일(월~금)</option>
+        </select>
+        <button class="btn primary" id="add-alarm">추가</button>
+        <button class="btn" id="test-alarm" title="알림 테스트">테스트</button>
+      </div>
+      <div class="muted small">※ 이 페이지가 열려 있어야 정시 알림이 울립니다. 브라우저 알림 권한을 허용하면 시스템 알림으로도 뜹니다.</div>
+      <div id="alarm-list" class="list" style="margin-top:10px"></div>
+      <audio id="alarm-sound" preload="auto">
+        <source src="data:audio/mp3;base64,//uQZAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAACcQAAAAAABAAACwAAAENsaWNrICEhISEhISEhISEhISEhISEhISEhISEhISEhISEhISE=" type="audio/mp3" />
+      </audio>
+    </div>
+  </section>
+
+  <!-- 지출 탭 -->
+  <section id="tab-money" class="tab" aria-hidden="true">
+    <div class="card pad">
+      <h2>지출 기록</h2>
+      <div class="row">
+        <input id="memo" class="input" placeholder="메모" aria-label="메모">
+        <input id="amount" class="input" inputmode="numeric" placeholder="금액 (숫자만)" aria-label="금액">
+        <input id="date" class="input" type="date" aria-label="날짜">
+        <button class="btn primary" id="add-spent">추가</button>
+        <button class="btn" id="export-csv">CSV 내보내기</button>
+      </div>
+      <table class="table" aria-label="지출 테이블"><tbody id="spent-list"></tbody></table>
+      <div class="row"><span class="pill" id="sum-month">이번 달 합계: ₩0</span><span class="pill" id="sum-all">전체 합계: ₩0</span></div>
+    </div>
+  </section>
+
+  <!-- 한줄일기 탭 -->
+  <section id="tab-note" class="tab" aria-hidden="true">
+    <div class="card pad">
+      <h2>한 줄 일기</h2>
+      <div class="row">
+        <input id="line-date" class="input" type="date" aria-label="날짜">
+        <input id="line-text" class="input" placeholder="오늘을 한 문장으로" aria-label="한줄">
+        <button class="btn primary" id="add-line">추가</button>
+      </div>
+      <div id="line-list" class="list"></div>
+    </div>
+  </section>
+
+  <!-- 설정 탭 -->
+  <section id="tab-settings" class="tab" aria-hidden="true">
+    <div class="grid">
+      <div class="card pad col-6">
+        <h2>백업 & 복원</h2>
+        <div class="row">
+          <button class="btn" id="backup">모든 데이터 JSON 내보내기</button>
+          <input id="restore-file" type="file" accept="application/json" class="input" aria-label="복원 파일">
+          <button class="btn" id="restore">복원</button>
+        </div>
+        <p class="muted small">모든 데이터는 브라우저 <strong>localStorage</strong>에만 저장됩니다.</p>
+      </div>
+      <div class="card pad col-6">
+        <h2>초기화</h2>
+        <button class="btn danger" id="wipe">데이터 전부 삭제</button>
+        <p class="muted small">되돌릴 수 없습니다. 내보내기로 백업해두세요.</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer><span class="savehint">Tip: 이 파일 하나만 저장하면 어디서든 바로 실행됩니다.</span></footer>
+
+<script>
+  // ====== 유틸 ======
+  const $ = sel => document.querySelector(sel);
+  const $$ = sel => Array.from(document.querySelectorAll(sel));
+  const fmt = n => n.toLocaleString('ko-KR');
+  const todayStr = () => new Date().toISOString().slice(0,10);
+  const store = {
+    get(k, def){try{const v=localStorage.getItem(k);return v?JSON.parse(v):def}catch(e){return def}},
+    set(k, v){localStorage.setItem(k, JSON.stringify(v))},
+    del(k){localStorage.removeItem(k)}
+  }
+
+  // ====== 탭 ======
+  const tabs = $$('.tabbtn');
+  tabs.forEach(btn=>btn.addEventListener('click',()=>{
+    $$('.tab').forEach(s=>s.setAttribute('aria-hidden','true'));
+    tabs.forEach(b=>{b.removeAttribute('aria-current'); b.setAttribute('aria-selected','false')});
+    const id = `#tab-${btn.dataset.tab}`;
+    document.querySelector(id).setAttribute('aria-hidden','false');
+    btn.setAttribute('aria-current','page');
+    btn.setAttribute('aria-selected','true');
+  }))
+
+  // ====== 물 마시기 ======
+  const waterKey = 'water:'+todayStr();
+  function loadWater(){
+    const v = store.get(waterKey,0); $('#water').value=v; $('#water-label').textContent=`${v}/8잔`;}
+  $('#btn-water').onclick=()=>{const v = Math.min(8, (store.get(waterKey,0)+1)); store.set(waterKey,v); loadWater()}
+  $('#btn-reset-water').onclick=()=>{store.set(waterKey,0); loadWater()}
+
+  // ====== 오늘 한 줄 ======
+  function loadTodayLine(){
+    $('#today-line').value = store.get('line:'+todayStr(), '')
+    const y = new Date(Date.now()-86400000).toISOString().slice(0,10);
+    $('#yesterday-line').textContent = store.get('line:'+y, '—');
+  }
+  $('#save-today').onclick=()=>{store.set('line:'+todayStr(), $('#today-line').value.trim()); alert('저장했어요!')}
+
+  // ====== 빠른 할 일 ======
+  function renderQuick(){
+    const list = store.get('tasks', []);
+    const today = list.filter(t=>!t.done && (!t.due || t.due===todayStr())).slice(-5).reverse();
+    const box = $('#quick-list'); box.innerHTML='';
+    today.forEach((t,i)=>{
+      const el=document.createElement('div'); el.className='item';
+      el.innerHTML = `<div><strong>${t.text}</strong> <span class="pill">${t.pri||'보통'}</span></div>
+      <div class="row"><button class="btn" aria-label="완료" data-i="${t.id}">완료</button></div>`;
+      el.querySelector('button').onclick=()=>toggleDone(t.id);
+      box.appendChild(el);
+    })
+  }
+
+  // ====== 할 일 전체 ======
+  function addTask(text, pri, due){
+    const list = store.get('tasks', []);
+    list.push({id:Date.now()+Math.random(), text, pri, due, done:false});
+    store.set('tasks', list); renderTasks(); renderQuick(); syncKPI();
+  }
+  function toggleDone(id){
+    const list = store.get('tasks', []);
+    const i = list.findIndex(x=>x.id===id); if(i>=0){list[i].done=!list[i].done; store.set('tasks',list); renderTasks(); renderQuick(); syncKPI();}
+  }
+  function removeTask(id){
+    let list = store.get('tasks', []); list = list.filter(x=>x.id!==id); store.set('tasks', list); renderTasks(); renderQuick(); syncKPI();
+  }
+  function renderTasks(){
+    const list = store.get('tasks', []);
+    const box = $('#task-list'); box.innerHTML='';
+    list.sort((a,b)=> (a.done-b.done) || ((a.due||'9999')>(b.due||'9999')?1:-1) );
+    list.forEach(t=>{
+      const el=document.createElement('div'); el.className='item'+(t.done?' done':'');
+      el.innerHTML = `<div class="row"><input type="checkbox" ${t.done?'checked':''} aria-label="완료 표시"><div><strong>${t.text}</strong>
+      <div class="muted small">${t.due?('기한: '+t.due):'기한 없음'} · 우선순위: ${t.pri||'보통'}</div></div></div>
+      <div class="row"><button class="btn" aria-label="삭제">삭제</button></div>`;
+      el.querySelector('input').onchange=()=>toggleDone(t.id);
+      el.querySelector('button').onclick=()=>removeTask(t.id);
+      box.appendChild(el);
+    })
+    $('#kpi-done').textContent = list.filter(x=>x.done).length;
+  }
+  $('#add-task').onclick=()=>{const t=$('#task-input').value.trim(); if(!t) return; addTask(t, $('#task-priority').value, $('#task-date').value||null); $('#task-input').value=''}
+  $('#task-input').addEventListener('keydown',e=>{if(e.key==='Enter') $('#add-task').click()})
+  $('#clear-done').onclick=()=>{const left = store.get('tasks', []).filter(x=>!x.done); store.set('tasks', left); renderTasks(); renderQuick(); syncKPI();}
+  $('#add-qtask').onclick=()=>{const t=$('#qtask').value.trim(); if(!t) return; addTask(t,'보통',todayStr()); $('#qtask').value=''}
+
+  // ====== 지출 ======
+  function addSpent(memo, amount, date){
+    const list = store.get('spent', []);
+    list.push({id:Date.now()+Math.random(), memo, amount:Number(amount||0), date});
+    store.set('spent', list); renderSpent(); renderSpentToday(); syncKPI();
+  }
+  function removeSpent(id){ let list=store.get('spent',[]); list=list.filter(x=>x.id!==id); store.set('spent',list); renderSpent(); renderSpentToday(); syncKPI(); }
+  function renderSpent(){
+    const list = store.get('spent', []).sort((a,b)=> (a.date<b.date?1:-1));
+    const box = $('#spent-list'); box.innerHTML='';
+    let monthSum = 0, allSum = 0; const now = new Date(); const ym = now.toISOString().slice(0,7);
+    list.forEach(s=>{ allSum+=s.amount; if((s.date||'').startsWith(ym)) monthSum+=s.amount; const tr=document.createElement('tr');
+      tr.innerHTML = `<td>${s.date||''}</td><td>${s.memo}</td><td>₩${fmt(s.amount)}</td><td class="right"><button class="btn" aria-label="삭제">삭제</button></td>`;
+      tr.querySelector('button').onclick=()=>removeSpent(s.id);
+      box.appendChild(tr);
+    })
+    $('#sum-month').textContent = `이번 달 합계: ₩${fmt(monthSum)}`;
+    $('#sum-all').textContent = `전체 합계: ₩${fmt(allSum)}`;
+  }
+  function renderSpentToday(){
+    const list = store.get('spent', []).filter(x=>x.date===todayStr()).slice(-5).reverse();
+    const box = $('#spent-today'); box.innerHTML='';
+    list.forEach(s=>{const tr=document.createElement('tr'); tr.innerHTML=`<td>${s.memo}</td><td>₩${fmt(s.amount)}</td>`; box.appendChild(tr)});
+  }
+  $('#add-spent').onclick=()=>{const m=$('#memo').value.trim(); const a=($('#amount').value||'').replace(/[^\d]/g,''); const d=$('#date').value||todayStr(); if(!m||!a) return; addSpent(m, a, d); $('#memo').value=''; $('#amount').value=''}
+  $('#export-csv').onclick=()=>{
+    const list=store.get('spent',[]); const rows = [['date','memo','amount'], ...list.map(x=>[x.date,x.memo,x.amount])];
+    const csv = rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+    const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}); const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download='spent.csv'; a.click(); URL.revokeObjectURL(url);
+  }
+  $('#add-qspent').onclick=()=>{const m=$('#qmemo').value.trim(); const a=($('#qamount').value||'').replace(/[^\d]/g,''); if(!m||!a) return; addSpent(m,a,todayStr()); $('#qmemo').value=''; $('#qamount').value=''}
+
+  // ====== 한 줄 일기 ======
+  function addLine(date, text){
+    store.set('line:'+date, text);
+    renderLines(); loadTodayLine();
+  }
+  function renderLines(){
+    const keys = Object.keys(localStorage).filter(k=>k.startsWith('line:'));
+    keys.sort().reverse();
+    const box = $('#line-list'); box.innerHTML='';
+    keys.forEach(k=>{const d=k.split(':')[1]; const t=store.get(k,''); const el=document.createElement('div'); el.className='item';
+      el.innerHTML=`<div><strong>${d}</strong><div class="muted small">${t||''}</div></div><div class="row"><button class="btn" aria-label="삭제">삭제</button></div>`;
+      el.querySelector('button').onclick=()=>{store.del('line:'+d); renderLines(); loadTodayLine();}
+      box.appendChild(el);
+    })
+  }
+  $('#add-line').onclick=()=>{const d=$('#line-date').value||todayStr(); const t=$('#line-text').value.trim(); if(!t) return; addLine(d,t); $('#line-text').value=''}
+
+  // ====== 타이머 ======
+  let state = {work:25*60, rest:5*60, left:25*60, running:false, mode:'work', t:null};
+  function renderClock(){
+    const m = String(Math.floor(state.left/60)).padStart(2,'0');
+    const s = String(state.left%60).padStart(2,'0');
+    $('#clock').textContent = `${m}:${s}`;
+  }
+  function tick(){
+    if(!state.running) return; if(state.left>0){state.left--; renderClock()} else { nextPhase(); }
+  }
+  function nextPhase(){
+    try{document.getElementById('beep').play().catch(()=>{})}catch(e){}
+    const log = store.get('sessions',[]);
+    log.push({ts:new Date().toISOString(), mode:state.mode, len: (state.mode==='work'?state.work:state.rest)});
+    store.set('sessions',log); renderLog();
+    if(state.mode==='work'){ state.mode='rest'; state.left=state.rest; }
+    else { state.mode='work'; state.left=state.work; }
+    renderClock();
+  }
+  function renderLog(){
+    const box = $('#session-log'); box.innerHTML='';
+    const log = store.get('sessions',[]).slice(-12).reverse();
+    log.forEach(s=>{ const el=document.createElement('div'); el.className='item'; const mm=Math.round(s.len/60); el.innerHTML=`<div>${new Date(s.ts).toLocaleString('ko-KR')} — ${s.mode==='work'?'작업':'휴식'} ${mm}분</div>`; box.appendChild(el) })
+  }
+  $('#start').onclick=()=>{if(state.running) return; state.running=true; if(state.left<=0) state.left = (state.mode==='work'?state.work:state.rest); renderClock(); state.t=setInterval(tick,1000)}
+  $('#pause').onclick=()=>{state.running=false; if(state.t) clearInterval(state.t)}
+  $('#reset').onclick=()=>{state.running=false; if(state.t) clearInterval(state.t); state.mode='work'; state.left=state.work; renderClock()}
+  $('#apply-timer').onclick=()=>{const w=Math.max(1, parseInt($('#pomodoro-min').value||25)); const r=Math.max(1, parseInt($('#break-min').value||5)); state.work=w*60; state.rest=r*60; if(state.mode==='work') state.left=state.work; else state.left=state.rest; renderClock()}
+  $('#clear-log').onclick=()=>{store.set('sessions',[]); renderLog()}
+  // ====== 알람 ======
+  function reqNotifyPermission(){
+    try{ if('Notification' in window && Notification.permission==='default'){ Notification.requestPermission().catch(()=>{});} }catch(e){}
+  }
+  function nextWeekday(dt){
+    const d = new Date(dt);
+    do{ d.setDate(d.getDate()+1); } while([0,6].includes(d.getDay()));
+    return d;
+  }
+  function toLocalISOString(dt){
+    const z = dt.getTimezoneOffset()*60000; return new Date(dt - z).toISOString().slice(0,16);
+  }
+  function addAlarmItem(title, whenISO, repeat){
+    const list = store.get('alarms', []);
+    const id = Date.now()+Math.random();
+    list.push({id, title: title||'알람', when: whenISO, repeat: repeat||'none', enabled:true, lastFired:null});
+    store.set('alarms', list); renderAlarms();
+  }
+  function toggleAlarm(id){
+    const list = store.get('alarms', []); const i=list.findIndex(a=>a.id===id); if(i<0) return;
+    list[i].enabled = !list[i].enabled; store.set('alarms', list); renderAlarms();
+  }
+  function removeAlarm(id){
+    let list = store.get('alarms', []); list = list.filter(a=>a.id!==id); store.set('alarms', list); renderAlarms();
+  }
+  function scheduleNext(a){
+    let d = new Date(a.when);
+    if(a.repeat==='daily'){ d.setDate(d.getDate()+1); }
+    else if(a.repeat==='weekdays'){ d = nextWeekday(d); }
+    else { a.enabled=false; }
+    a.when = toLocalISOString(d);
+  }
+  function ring(a){
+    try{ document.getElementById('alarm-sound').play().catch(()=>{});}catch(e){}
+    if('vibrate' in navigator){ try{navigator.vibrate([200,100,200]);}catch(e){} }
+    try{
+      if('Notification' in window && Notification.permission==='granted') new Notification('알람', { body: a.title||'알람', tag:'life-helper-alarm' });
+      else alert('알람: '+(a.title||''));
+    }catch(e){ alert('알람: '+(a.title||'')); }
+  }
+  function checkAlarms(){
+    const list = store.get('alarms', []);
+    const now = new Date();
+    list.forEach(a=>{
+      if(!a.enabled) return;
+      const due = new Date(a.when);
+      if(now >= due){
+        const key = new Date().toISOString().slice(0,16);
+        if(a.lastFired!==key){ ring(a); a.lastFired=key; if(a.repeat==='none'){ a.enabled=false; } else { scheduleNext(a); } }
+      }
+    });
+    store.set('alarms', list); renderAlarms(false);
+  }
+  function renderAlarms(){
+    const box = document.getElementById('alarm-list'); if(!box) return; box.innerHTML='';
+    const list = (store.get('alarms', [])||[]).sort((a,b)=> (a.enabled===b.enabled?0:(a.enabled?-1:1)) || (a.when>b.when?1:-1));
+    list.forEach(a=>{
+      const el = document.createElement('div'); el.className='item';
+      const when = a.when? a.when.replace('T',' ') : '';
+      el.innerHTML = `<div><strong>${a.title||'알람'}</strong>
+        <div class="muted small">${when} · 반복: ${a.repeat==='none'?'없음':(a.repeat==='daily'?'매일':'평일')}</div></div>
+        <div class="row">
+          <button class="btn" data-act="toggle">${a.enabled?'끄기':'켜기'}</button>
+          <button class="btn" data-act="del">삭제</button>
+        </div>`;
+      el.querySelector('[data-act="toggle"]').onclick=()=>toggleAlarm(a.id);
+      el.querySelector('[data-act="del"]').onclick=()=>removeAlarm(a.id);
+      box.appendChild(el);
+    })
+  }
+  document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible') renderAlarms(); });
+  document.getElementById('add-alarm')?.addEventListener('click',()=>{
+    const title = document.getElementById('alarm-title').value.trim();
+    const dt = document.getElementById('alarm-dt').value; if(!dt) return alert('날짜와 시간을 선택하세요');
+    const rep = document.getElementById('alarm-repeat').value;
+    addAlarmItem(title, dt, rep); reqNotifyPermission();
+    document.getElementById('alarm-title').value='';
+  });
+  document.getElementById('test-alarm')?.addEventListener('click',()=>{ reqNotifyPermission(); ring({title:'테스트 알람'}); });
+
+  let alarmTimer = null;
+  function startAlarmLoop(){ if(alarmTimer) clearInterval(alarmTimer); alarmTimer = setInterval(checkAlarms, 1000); }
+
+  // ====== KPI ======
+  function syncKPI(){
+    const done = store.get('tasks', []).filter(x=>x.done).length; $('#kpi-done').textContent = done;
+    const todaySpent = store.get('spent', []).filter(x=>x.date===todayStr()).reduce((a,b)=>a+b.amount,0); $('#kpi-spent').textContent = '₩'+fmt(todaySpent);
+  }
+
+  // ====== 백업/복원/리셋 ======
+  $('#backup').onclick=()=>{
+    const data={tasks:store.get('tasks',[]),spent:store.get('spent',[]),sessions:store.get('sessions',[])};
+    const lines = Object.keys(localStorage).filter(k=>k.startsWith('line:')).map(k=>[k,store.get(k,'')]);
+    data.lines = Object.fromEntries(lines);
+    const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}); const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download='life-helper-backup.json'; a.click(); URL.revokeObjectURL(url);
+  }
+  $('#restore').onclick=()=>{
+    const f=$('#restore-file').files[0]; if(!f) return alert('파일을 선택하세요');
+    const r=new FileReader(); r.onload=()=>{ try{ const data=JSON.parse(r.result);
+      if(data.tasks) store.set('tasks', data.tasks); if(data.spent) store.set('spent',data.spent); if(data.sessions) store.set('sessions',data.sessions);
+      if(data.lines) { Object.entries(data.lines).forEach(([k,v])=>store.set(k,v)); }
+      renderTasks(); renderSpent(); renderSpentToday(); renderLog(); renderLines(); renderQuick(); syncKPI(); loadTodayLine(); alert('복원 완료!');
+    }catch(e){ alert('복원 실패: 파일 형식 확인'); } };
+    r.readAsText(f);
+  }
+  $('#wipe').onclick=()=>{
+    if(confirm('정말 모든 데이터를 삭제할까요?')){
+      const keep = [];
+      for(const k of Object.keys(localStorage)) if(!k.startsWith('line:')) keep.push(k);
+      localStorage.clear();
+      renderTasks(); renderSpent(); renderSpentToday(); renderLog(); renderLines(); renderQuick(); syncKPI(); loadTodayLine(); loadWater();
+      alert('초기화 완료');
+    }
+  }
+
+  // ====== 초기 로드 ======
+  window.addEventListener('DOMContentLoaded',()=>{
+    $('#date').value = todayStr(); $('#line-date').value = todayStr();
+    renderTasks(); renderSpent(); renderSpentToday(); renderLog(); renderLines(); renderQuick(); syncKPI(); loadTodayLine(); loadWater(); renderClock();
+    renderAlarms(); startAlarmLoop(); reqNotifyPermission();
+  })
+</script>
+</body>
+</html>
