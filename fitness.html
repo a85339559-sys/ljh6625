@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>운동 카운터 (팔굽혀펴기·철봉)</title>
+  <style>
+    :root {
+      --bg:#0b0d14; --fg:#e7ebf0; --muted:#93a1b3; --accent:#6ee7b7; --danger:#f87171;
+      --card:#111827; --border:#1f2937;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;font-family:System-ui,-apple-system,Segoe UI,Roboto,Pretendard,'Noto Sans KR',sans-serif;background:var(--bg);color:var(--fg)}
+    .wrap{max-width:720px;margin:0 auto;padding:16px}
+    header{position:sticky;top:0;background:rgba(11,13,20,.7);backdrop-filter:saturate(160%) blur(10px);border-bottom:1px solid var(--border);z-index:10}
+    h1{font-size:22px;margin:12px 0}
+    .grid{display:grid;gap:12px}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:14px}
+    label{display:block;font-size:14px;color:var(--muted);margin-bottom:6px}
+    select,button,input[type="number"],input[type="text"]{width:100%;padding:12px 14px;border-radius:12px;border:1px solid var(--border);background:#0f1420;color:var(--fg);font-size:16px}
+    button{cursor:pointer;transition:transform .06s ease,opacity .2s ease}
+    button:active{transform:scale(.98)}
+    .row{display:flex;gap:10px;align-items:center}
+    .row>*{flex:1}
+    .counter{
+      font-size:80px;font-weight:800;letter-spacing:1px;text-align:center;padding:28px;border-radius:20px;background:#0f1420;border:1px solid var(--border)
+    }
+    .sub{display:flex;gap:10px;justify-content:space-between;color:var(--muted);font-size:14px}
+    .pill{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border:1px solid var(--border);border-radius:999px;background:#0f1420}
+    .ok{background:rgba(110,231,183,.1);border-color:rgba(110,231,183,.4)}
+    .err{background:rgba(248,113,113,.1);border-color:rgba(248,113,113,.4)}
+    .big{font-size:20px;font-weight:700}
+    .hint{font-size:13px;color:var(--muted)}
+    .tapBtn{padding:18px 16px;font-size:22px;font-weight:800}
+    .ghost{background:transparent}
+    .accent{background:linear-gradient(180deg,#34d39933,#10b98122);border-color:#10b98160}
+    .danger{background:linear-gradient(180deg,#f8717133,#ef444422);border-color:#f8717166}
+    .muted{color:var(--muted)}
+    .stack{display:flex;flex-direction:column;gap:12px}
+    .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <h1>🏋️ 운동 카운터 <span class="muted">(팔굽혀펴기·철봉)</span></h1>
+    </div>
+  </header>
+  <main class="wrap grid">
+    <section class="card">
+      <div class="grid">
+        <div class="counter" id="count">0</div>
+        <div class="sub">
+          <div class="pill" id="modeStatus">모드: 수동 탭</div>
+          <div class="pill" id="sensorStatus">센서: 확인 중…</div>
+        </div>
+        <div class="row">
+          <div>
+            <label for="exercise">운동 종류</label>
+            <select id="exercise" aria-label="운동 종류">
+              <option value="pushup">팔굽혀펴기</option>
+              <option value="pullup">철봉(턱걸이)</option>
+              <option value="squat">스쿼트</option>
+            </select>
+          </div>
+          <div>
+            <label for="mode">카운트 방식</label>
+            <select id="mode" aria-label="카운트 방식">
+              <option value="tap">수동 탭</option>
+              <option value="voice">음성(베타)</option>
+              <option value="motion">모션(베타)</option>
+            </select>
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label for="goal">목표 횟수(선택)</label>
+            <input id="goal" type="number" min="1" placeholder="예: 20" />
+          </div>
+          <div>
+            <label for="threshold">민감도(모션)</label>
+            <input id="threshold" type="number" step="0.1" min="0.5" value="1.2" />
+          </div>
+        </div>
+        <div class="row">
+          <button id="tapBtn" class="tapBtn accent">+1 (탭하여 카운트)</button>
+          <button id="resetBtn" class="danger">리셋</button>
+        </div>
+        <div class="row">
+          <button id="startBtn">시작</button>
+          <button id="stopBtn" class="ghost">정지</button>
+        </div>
+        <div class="stack">
+          <div class="hint">• 파일을 저장해서 스마트폰 브라우저로 열기 (또는 지금 캔버스에서 “다운로드 → 휴대폰으로 전송”).<br>• <b>수동</b>: 버튼을 탭하거나 키보드 <b>스페이스</b>로 +1<br>• <b>음성</b>: “하나/둘/셋…”, "카운트" 등 말하면 +1 (권한 필요)<br>• <b>모션</b>: 스마트폰을 몸에 고정(주머니/팔밴드). 피크 감지로 자동 +1 (iOS는 권한 필요)</div>
+          <details>
+            <summary>설정 & 사용 팁</summary>
+            <ul>
+              <li>팔굽혀펴기: 가슴이 바닥에 가까워질 때 가장 크게 움직이니 폰을 주머니나 상의에 고정하세요.</li>
+              <li>철봉: 폰을 주머니에 넣고 턱이 올라갈 때 가속 변화가 큽니다. 민감도를 조정하세요.</li>
+              <li>목표를 채우면 자동으로 진동/비프 피드백.</li>
+              <li>정확도가 낮으면 <b>수동 탭</b>으로 안전하게 기록하세요.</li>
+            </ul>
+          </details>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+  // --- State ---
+  const el = (id)=>document.getElementById(id);
+  const countEl = el('count');
+  const modeSel = el('mode');
+  const exerciseSel = el('exercise');
+  const sensorStatus = el('sensorStatus');
+  const modeStatus = el('modeStatus');
+  const tapBtn = el('tapBtn');
+  const resetBtn = el('resetBtn');
+  const startBtn = el('startBtn');
+  const stopBtn = el('stopBtn');
+  const goalInput = el('goal');
+  const thresholdInput = el('threshold');
+
+  let count = 0;
+  let running = false;
+  let lastTick = 0;
+  let refractoryMs = 600; // 최소 간격(중복 방지)
+  let audioCtx, beepOsc;
+  let recognizer; // SpeechRecognition
+  let motionHandler;
+
+  function updateCount(n){
+    count = Math.max(0, n);
+    countEl.textContent = String(count);
+    pulse(countEl);
+    haptic(10);
+    beep(0.02, 660);
+    const goal = parseInt(goalInput.value||'0',10);
+    if(goal && count>=goal){
+      celebrate();
+    }
+    localStorage.setItem('repCounter', JSON.stringify({count,mode:modeSel.value,exercise:exerciseSel.value,goal:goalInput.value,threshold:thresholdInput.value}));
+  }
+
+  function inc(){
+    const now=Date.now();
+    if(now-lastTick<refractoryMs) return; // 디바운스
+    lastTick=now; updateCount(count+1);
+  }
+
+  function reset(){ updateCount(0); }
+
+  function pulse(node){
+    node.animate([{transform:'scale(1)'},{transform:'scale(1.04)'},{transform:'scale(1)'}],{duration:140});
+  }
+
+  function haptic(ms){ if(navigator.vibrate) navigator.vibrate(ms); }
+
+  function initBeep(){
+    if(!audioCtx){
+      audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+    }
+  }
+  function beep(dur=0.05, freq=880){
+    try{
+      initBeep();
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      o.connect(g); g.connect(audioCtx.destination);
+      o.type='sine'; o.frequency.value=freq;
+      g.gain.setValueAtTime(0.0001, audioCtx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.15, audioCtx.currentTime+0.005);
+      g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime+dur);
+      o.start(); o.stop(audioCtx.currentTime+dur+0.01);
+    }catch(e){}
+  }
+
+  function celebrate(){
+    haptic([60,60,60]);
+    for(let i=0;i<3;i++) setTimeout(()=>beep(0.06, 600+i*120), i*90);
+  }
+
+  // --- UI wiring ---
+  tapBtn.addEventListener('click', inc);
+  resetBtn.addEventListener('click', reset);
+  document.addEventListener('keydown', (e)=>{ if(e.code==='Space'){ e.preventDefault(); inc(); }});
+
+  startBtn.addEventListener('click', ()=>{
+    running=true; setupMode();
+  });
+  stopBtn.addEventListener('click', ()=>{
+    running=false; teardownMode();
+  });
+
+  modeSel.addEventListener('change', ()=>{ if(running){ setupMode(); } updateModeStatus(); });
+  exerciseSel.addEventListener('change', ()=>{ /* reserved for per-exercise tuning */ });
+
+  function updateModeStatus(){ modeStatus.textContent = '모드: ' + (
+    modeSel.value==='tap' ? '수동 탭' : modeSel.value==='voice' ? '음성(베타)' : '모션(베타)'
+  ); }
+
+  // --- Voice mode ---
+  function startVoice(){
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if(!SR){ sensorStatus.className='pill err'; sensorStatus.textContent='음성 인식 미지원'; return; }
+    recognizer = new SR();
+    recognizer.lang='ko-KR';
+    recognizer.interimResults=false; recognizer.continuous=true;
+    recognizer.onresult=(ev)=>{
+      for(const res of ev.results){
+        const t = res[0].transcript.trim();
+        if(/(하나|둘|셋|넷|다섯|여섯|일곱|여덟|아홉|열|카운트|시작|업|다운)/.test(t)){
+          inc();
+        }
+      }
+    };
+    recognizer.onend=()=>{ if(running && modeSel.value==='voice') recognizer.start(); };
+    recognizer.start();
+    sensorStatus.className='pill ok'; sensorStatus.textContent='음성 인식 동작 중';
+  }
+
+  function stopVoice(){ if(recognizer){ try{recognizer.onend=null; recognizer.stop();}catch(e){} recognizer=null; } }
+
+  // --- Motion mode ---
+  let lastAcc = {x:0,y:0,z:0};
+  let lpf = {x:0,y:0,z:0};
+  const alpha=0.2; // LPF 계수
+
+  async function ensureMotionPermission(){
+    try{
+      if(typeof DeviceMotionEvent!=='undefined' && typeof DeviceMotionEvent.requestPermission==='function'){
+        const state = await DeviceMotionEvent.requestPermission();
+        return state==='granted';
+      }
+      return true; // 안드/데스크탑은 권한 프롬프트 없음
+    }catch(e){ return false; }
+  }
+
+  function startMotion(){
+    motionHandler = (ev)=>{
+      const a = ev.accelerationIncludingGravity || ev.acceleration || {x:0,y:0,z:0};
+      // 저역통과로 노이즈 완화
+      lpf.x = alpha*a.x + (1-alpha)*lpf.x;
+      lpf.y = alpha*a.y + (1-alpha)*lpf.y;
+      lpf.z = alpha*a.z + (1-alpha)*lpf.z;
+      const dx = lpf.x - lastAcc.x;
+      const dy = lpf.y - lastAcc.y;
+      const dz = lpf.z - lastAcc.z;
+      lastAcc = {x:lpf.x,y:lpf.y,z:lpf.z};
+
+      // 운동별 주요 축 가중치
+      const ex = exerciseSel.value;
+      let axisMag;
+      if(ex==='pushup') axisMag = Math.abs(dz); // 위/아래 변화
+      else if(ex==='pullup') axisMag = Math.abs(dy); // 수직 방향
+      else axisMag = Math.max(Math.abs(dx), Math.abs(dy), Math.abs(dz)); // 스쿼트 등 일반
+
+      const th = parseFloat(thresholdInput.value || '1.2');
+      if(axisMag>th) inc();
+    };
+    window.addEventListener('devicemotion', motionHandler, {passive:true});
+    sensorStatus.className='pill ok'; sensorStatus.textContent='모션 감지 동작 중';
+  }
+
+  function stopMotion(){ if(motionHandler){ window.removeEventListener('devicemotion', motionHandler); motionHandler=null; } }
+
+  async function setupMode(){
+    teardownMode();
+    updateModeStatus();
+    if(modeSel.value==='voice'){
+      startVoice();
+    }else if(modeSel.value==='motion'){
+      const ok = await ensureMotionPermission();
+      if(ok){ startMotion(); }
+      else { sensorStatus.className='pill err'; sensorStatus.textContent='모션 권한 거부'; }
+    }else{
+      sensorStatus.className='pill'; sensorStatus.textContent='센서: 필요 없음';
+    }
+  }
+
+  function teardownMode(){ stopVoice(); stopMotion(); }
+
+  // --- Restore state ---
+  try{
+    const saved = JSON.parse(localStorage.getItem('repCounter')||'null');
+    if(saved){
+      count = saved.count||0; countEl.textContent=String(count);
+      if(saved.mode) modeSel.value = saved.mode;
+      if(saved.exercise) exerciseSel.value = saved.exercise;
+      if(saved.goal) goalInput.value = saved.goal;
+      if(saved.threshold) thresholdInput.value = saved.threshold;
+    }
+  }catch(e){}
+  updateModeStatus();
+
+  // Accessibility labels for screen readers on count change
+  const live = document.createElement('div');
+  live.className='sr-only'; live.setAttribute('role','status'); live.setAttribute('aria-live','polite');
+  document.body.appendChild(live);
+  const observer = new MutationObserver(()=>{ live.textContent = `현재 횟수 ${count}`; });
+  observer.observe(countEl,{characterData:true,childList:true});
+  </script>
+</body>
+</html>
