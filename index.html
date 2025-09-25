@@ -6,6 +6,7 @@
   <title>프로그램 소개 · 반응형 단일 파일 (Unified v2)</title>
   <meta name="description" content="AI와 인간의 첫 만남. GitHub Pages 호환." />
   <meta name="color-scheme" content="light dark" />
+  <meta name="theme-color" content="#0b0d14" />
   <style>
     :root{
       --bg:#0b0d14; --fg:#e7ebf0; --muted:#9aa4b2; --line:#1f2633; --card:#0f1420; --acc:#60a5fa; --acc-2:#a78bfa;
@@ -33,8 +34,6 @@
     .menu{display:flex; gap:18px}
     .menu a{padding:8px 10px; border-radius:10px; text-decoration:none; color:var(--muted)}
     .menu a:hover, .menu a:focus{background:color-mix(in oklab, var(--acc) 10%, transparent); color:var(--fg)}
-
-    /* Hide desktop nav on small screens */
     @media (max-width: 960px){ header{display:none} }
 
     /* ===== Mobile Sticker Buttons ===== */
@@ -114,6 +113,22 @@
 
     /* ===== Motion Safety ===== */
     @media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} .sticker, .btn{transition:none} }
+
+    /* === Apple-like full-bleed section === */
+    .fullbleed{position:relative; min-height:92vh; display:grid; place-items:center; overflow:hidden;
+      border-top:1px solid var(--line); background:var(--bg);}
+    .fullbleed .media{position:absolute; inset:0; z-index:0}
+    .fullbleed .media img,.fullbleed .media video{width:100%; height:100%; object-fit:cover; display:block}
+    .fullbleed .copy{position:relative; z-index:1; text-align:center; padding:min(8vw,60px);}
+    .headline{font-size:clamp(40px,8vw,84px); line-height:1.04; letter-spacing:-.02em; font-weight:800; margin:0 0 10px}
+    .subhead{font-size:clamp(16px,2.6vw,22px); color:var(--muted); margin:0 0 16px}
+    .cta-row{display:flex; gap:12px; justify-content:center; flex-wrap:wrap}
+    .cta-row .btn{padding:12px 18px; border-radius:12px; font-weight:700}
+
+    /* Subtle reveal on scroll */
+    .reveal{opacity:0; transform:translateY(26px); transition:opacity .5s ease, transform .5s ease}
+    .reveal.show{opacity:1; transform:none}
+    .section-hairline{border-top:1px solid color-mix(in oklab, var(--fg) 6%, transparent)}
   </style>
 </head>
 <body>
@@ -123,13 +138,13 @@
   <header>
     <nav class="nav wrap" aria-label="상단 내비게이션">
       <div class="brand"><i aria-hidden="true"></i> 프로그램 소개</div>
-      <div class="menu" role="menubar">
-        <a role="menuitem" href="#features">기능</a>
-        <a role="menuitem" href="#gallery">갤러리</a>
-        <a role="menuitem" href="#demos">데모</a>
-        <a role="menuitem" href="#specs">사양</a>
-        <a role="menuitem" href="#team">팀원</a>
-        <a role="menuitem" href="#contact">문의</a>
+      <div class="menu">
+        <a href="#features">기능</a>
+        <a href="#gallery">갤러리</a>
+        <a href="#demos">데모</a>
+        <a href="#specs">사양</a>
+        <a href="#team">팀원</a>
+        <a href="#contact">문의</a>
       </div>
     </nav>
   </header>
@@ -145,7 +160,7 @@
   </nav>
 
   <!-- Hero -->
-  <section id="intro" class="hero">
+  <section id="intro" class="hero reveal">
     <div class="wrap">
       <h1>AI와 인간의 첫 만남,<br/>Ai 소개하기</h1>
       <p class="lead">제가 만든 앱/도구/시뮬레이터를 한 곳에서 소개하는 반응형 단일 페이지 템플릿입니다. GitHub Pages에서 바로 구동되며, 이미지는 <code>./images/</code> 경로를 사용합니다.</p>
@@ -155,6 +170,39 @@
       </div>
     </div>
     <div class="hero-art" aria-hidden="true"></div>
+  </section>
+
+  <!-- Full-bleed Section: AI MAP -->
+  <section class="fullbleed reveal section-hairline" aria-labelledby="ai-map-head">
+    <div class="media">
+      <img src="./images/select-ai.JPG" alt="" aria-hidden="true">
+      <!-- 또는 비디오 사용
+      <video autoplay muted loop playsinline poster="./images/select-ai.JPG">
+        <source src="./images/hailuo-video-small.mp4" type="video/mp4">
+      </video> -->
+    </div>
+    <div class="copy">
+      <h2 id="ai-map-head" class="headline">AI MAP</h2>
+      <p class="subhead">이제 누구나, 한 페이지로 이해하는 AI 전경.</p>
+      <div class="cta-row">
+        <a class="btn primary" href="./aimap3_index.html">열어보기</a>
+        <a class="btn ghost" href="#gallery">갤러리</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Full-bleed Section: 인생나무 -->
+  <section class="fullbleed reveal" aria-labelledby="tree-head">
+    <div class="media">
+      <img src="./images/tree.JPG" alt="" aria-hidden="true">
+    </div>
+    <div class="copy">
+      <h2 id="tree-head" class="headline">인생나무</h2>
+      <p class="subhead">글을 쓰면 나무가 자랍니다. 보상은 가볍게, 기록은 온전히 내 것.</p>
+      <div class="cta-row">
+        <a class="btn primary" href="./tree.html">오늘의 기록</a>
+      </div>
+    </div>
   </section>
 
   <!-- Features -->
@@ -167,7 +215,6 @@
         <article class="feature">
           <div class="media">
             <a href="./aimap3_index.html" target="_blank" rel="noopener">
-              <!-- 미디어 샘플 이미지: 프로젝트 썸네일로 교체하세요 -->
               <img loading="lazy" src="./images/select-ai.JPG" alt="AI MAP 썸네일" />
             </a>
           </div>
@@ -237,80 +284,75 @@
     </div>
   </section>
 
-<section id="gallery">
-  <div class="wrap">
-    <h2 class="title">갤러리</h2>
-    <p class="subtitle">샘플 미디어는 <code>./images/</code> 교체 방식</p>
-    <div class="gallery">
-      <!-- Audio -->
-      <figure>
-        <div class="imgbox" style="display:grid;place-items:center;background:#0f172a">
-          <audio controls preload="metadata" style="width:100%">
-            <source src="./images/music.mp3" type="audio/mpeg">
-            브라우저가 오디오를 지원하지 않습니다.
-          </audio>
-        </div>
-        <figcaption>프로그램 A — 음악 만들기</figcaption>
-      </figure>
+  <!-- Gallery -->
+  <section id="gallery">
+    <div class="wrap">
+      <h2 class="title">갤러리</h2>
+      <p class="subtitle">샘플 미디어는 <code>./images/</code> 교체 방식</p>
+      <div class="gallery">
+        <!-- Audio -->
+        <figure>
+          <div class="imgbox" style="display:grid;place-items:center;background:#0f172a">
+            <audio controls preload="metadata" style="width:100%">
+              <source src="./images/music.mp3" type="audio/mpeg">
+              브라우저가 오디오를 지원하지 않습니다.
+            </audio>
+          </div>
+          <figcaption>프로그램 A — 음악 만들기</figcaption>
+        </figure>
 
-      <!-- Image (B 프로그램: 정지화면) -->
-      <figure>
-        <div class="imgbox">
-          <img
-            loading="lazy" decoding="async"
-            src="./images/smaple.png"
-            alt="프로그램 스크린샷 2"
-            style="width:100%;height:100%;object-fit:cover"
-            onerror="this.onerror=null;this.src='data:image/svg+xml;utf8,&lt;svg xmlns=%27http://www.w3.org/2000/svg%27 width=%27400%27 height=%27300%27&gt;&lt;rect width=%27100%25%27 height=%27100%25%27 fill=%27%230f172a%27/&gt;&lt;text x=%2750%25%27 y=%2750%25%27 fill=%27%239aa4b2%27 font-size=%2716%27 font-family=%27system-ui%27 dominant-baseline=%27middle%27 text-anchor=%27middle%27&gt;images/sample.png not found&lt;/text&gt;&lt;/svg&gt;';"
-          >
-        </div>
-        <figcaption>프로그램 B — 영상 만들기(과정)</figcaption>
-      </figure>
+        <!-- Image (B 프로그램: 정지화면) -->
+        <figure>
+          <div class="imgbox">
+            <img loading="lazy" decoding="async" src="./images/sample.png" alt="프로그램 스크린샷 2" style="width:100%;height:100%;object-fit:cover">
+          </div>
+          <figcaption>프로그램 B — 영상 만들기(과정)</figcaption>
+        </figure>
 
-      <!-- Video 1 (압축본/포스터 사용) -->
-      <figure>
-        <div class="imgbox">
-          <video controls preload="metadata" playsinline poster="./images/hailuo-thumb.jpg" style="width:100%;height:100%;object-fit:cover">
-            <source src="./images/hailuo-video-small.mp4" type="video/mp4">
-            브라우저가 영상을 지원하지 않습니다.
-          </video>
-        </div>
-        <figcaption>프로그램 C — 영상 만들기</figcaption>
-      </figure>
+        <!-- Video 1 (압축본/포스터 사용) -->
+        <figure>
+          <div class="imgbox">
+            <video controls preload="metadata" playsinline poster="./images/hailuo-thumb.jpg" style="width:100%;height:100%;object-fit:cover">
+              <source src="./images/hailuo-video-small.mp4" type="video/mp4">
+              브라우저가 영상을 지원하지 않습니다.
+            </video>
+          </div>
+          <figcaption>프로그램 C — 영상 만들기</figcaption>
+        </figure>
 
-      <!-- Video 2 -->
-      <figure>
-        <div class="imgbox">
-          <video controls preload="metadata" playsinline poster="./images/she-thumb.jpg" style="width:100%;height:100%;object-fit:cover">
-            <source src="./images/she.mp4" type="video/mp4">
-            브라우저가 영상을 지원하지 않습니다.
-          </video>
-        </div>
-        <figcaption>프로그램 D — 영상 만들기</figcaption>
-      </figure>
+        <!-- Video 2 -->
+        <figure>
+          <div class="imgbox">
+            <video controls preload="metadata" playsinline poster="./images/she-thumb.jpg" style="width:100%;height:100%;object-fit:cover">
+              <source src="./images/she.mp4" type="video/mp4">
+              브라우저가 영상을 지원하지 않습니다.
+            </video>
+          </div>
+          <figcaption>프로그램 D — 영상 만들기</figcaption>
+        </figure>
 
-      <!-- Video 3 -->
-      <figure>
-        <div class="imgbox">
-          <video controls preload="metadata" playsinline poster="./images/she2-thumb.jpg" style="width:100%;height:100%;object-fit:cover">
-            <source src="./images/she2.mp4" type="video/mp4">
-            브라우저가 영상을 지원하지 않습니다.
-          </video>
-        </div>
-        <figcaption>프로그램 E — 영상 만들기</figcaption>
-      </figure>
+        <!-- Video 3 -->
+        <figure>
+          <div class="imgbox">
+            <video controls preload="metadata" playsinline poster="./images/she2-thumb.jpg" style="width:100%;height:100%;object-fit:cover">
+              <source src="./images/she2.mp4" type="video/mp4">
+              브라우저가 영상을 지원하지 않습니다.
+            </video>
+          </div>
+          <figcaption>프로그램 E — 영상 만들기</figcaption>
+        </figure>
 
-      <!-- Image (F 프로그램: 정지화면) -->
-      <figure>
-        <div class="imgbox">
-          <img loading="lazy" decoding="async" src="./images/sample-6.jpg" alt="프로그램 스크린샷 6" style="width:100%;height:100%;object-fit:cover">
-        </div>
-        <figcaption>프로그램 F — 영상 만들기(데모)</figcaption>
-      </figure>
-    </div> <!-- /.gallery -->
-  </div> <!-- /.wrap -->
-</section>
-  
+        <!-- Image (F 프로그램: 정지화면) -->
+        <figure>
+          <div class="imgbox">
+            <img loading="lazy" decoding="async" src="./images/sample-6.jpg" alt="프로그램 스크린샷 6" style="width:100%;height:100%;object-fit:cover">
+          </div>
+          <figcaption>프로그램 F — 영상 만들기(데모)</figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
   <!-- Demos -->
   <section id="demos">
     <div class="wrap">
@@ -433,6 +475,12 @@
       }
     })
   });
+
+  // Scroll reveal (애플식 절제된 리빌)
+  const io = new IntersectionObserver((ents)=>{
+    ents.forEach(e => { if(e.isIntersecting) e.target.classList.add('show'); });
+  }, { threshold: 0.15 });
+  document.querySelectorAll('.reveal').forEach(el => io.observe(el));
 })();
 </script>
 </body>
