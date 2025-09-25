@@ -129,7 +129,10 @@
     .reveal{opacity:0; transform:translateY(26px); transition:opacity .5s ease, transform .5s ease}
     .reveal.show{opacity:1; transform:none}
     .section-hairline{border-top:1px solid color-mix(in oklab, var(--fg) 6%, transparent)}
-  </style>
+  
+    /* Contrast overlay & text enhancements for full-bleed sections (injected) */
+    .fullbleed .media::after{content:""; position:absolute; inset:0; pointer-events:none;
+      background: linear-gradient(to bottom, rgba(0,0,0,.10) 0%, rgba(0,0,0,.35) 55%, rgba(0,0,0,.55) 100%), rgba(0,0,0,.20);}</style>
 </head>
 <body>
   <a href="#intro" class="sr-only">본문으로 건너뛰기</a>
@@ -189,23 +192,7 @@
         <a class="btn ghost" href="#gallery">갤러리</a>
       </div>
     </div>
-  </section>
-
-  <!-- Full-bleed Section: 인생나무 -->
-  <section class="fullbleed reveal" aria-labelledby="tree-head">
-    <div class="media">
-      <img src="./images/tree.JPG" alt="" aria-hidden="true">
-    </div>
-    <div class="copy">
-      <h2 id="tree-head" class="headline">인생나무</h2>
-      <p class="subhead">글을 쓰면 나무가 자랍니다. 보상은 가볍게, 기록은 온전히 내 것.</p>
-      <div class="cta-row">
-        <a class="btn primary" href="./tree.html">오늘의 기록</a>
-      </div>
-    </div>
-  </section>
-
-  <!-- Features -->
+  </section><!-- Features -->
   <section id="features">
     <div class="wrap">
       <h2 class="title">핵심 기능</h2>
