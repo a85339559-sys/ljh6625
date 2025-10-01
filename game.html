@@ -1,0 +1,687 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>영단어 게임 — 스피드 퀴즈 v2.7</title>
+<meta name="color-scheme" content="light dark" />
+<style>
+  :root{ --bg:#0b0f17; --card:#101726; --fg:#e9eef7; --muted:#a8b2c2; --line:#1e2940; --acc:#6ea8ff; --acc2:#b48cff; --good:#34d399; --bad:#f87171; --radius:18px; --shadow:0 12px 34px rgba(0,0,0,.35) }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Pretendard,"Noto Sans KR",sans-serif; background:radial-gradient(1200px 500px at 20% -10%, #1b2640 0%, #0b0f17 60%), var(--bg); color:var(--fg)}
+  header{position:sticky; top:0; z-index:5; backdrop-filter:saturate(160%) blur(8px); background:linear-gradient(to right, rgba(16,23,38,.85), rgba(16,23,38,.65)); border-bottom:1px solid var(--line)}
+  .wrap{max-width:1200px; margin:0 auto; padding:16px}
+  .row{display:flex; gap:14px; align-items:center; flex-wrap:wrap}
+  h1{font-size:clamp(18px, 3.6vw, 28px); margin:6px 0}
+  .pill{display:inline-flex; align-items:center; gap:8px; padding:8px 12px; border:1px solid var(--line); background:#0f1627; border-radius:999px; color:var(--muted)}
+  select, button, input, textarea{font:inherit; color:inherit}
+  select, input[type="text"], .btn, textarea{padding:10px 12px; border-radius:12px; border:1px solid var(--line); background:linear-gradient(180deg,#131b2c,#0f1627); box-shadow:inset 0 1px 0 rgba(255,255,255,.04)}
+  select:focus, input:focus, .btn:focus, textarea:focus{outline:none; box-shadow:0 0 0 3px rgba(110,168,255,.35)}
+  .btn{cursor:pointer; transition:transform .06s ease, box-shadow .2s ease}
+  .btn.primary{background:linear-gradient(180deg,#2a4784,#1c315c); border-color:#2a4775}
+  .btn.acc{background:linear-gradient(180deg,#466ee6,#2b49a8); border-color:#3959bf}
+  .btn:active{transform:translateY(1px)}
+  .grid{display:grid; grid-template-columns:1.1fr .9fr; gap:16px; margin:16px auto}
+  @media (max-width:880px){.grid{grid-template-columns:1fr}}
+  .card{background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.0)); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow)}
+  .card>.in{padding:18px}
+  .stats{display:grid; grid-template-columns:repeat(5, minmax(0,1fr)); gap:10px}
+  .stat{background:#0d1424; border:1px solid var(--line); border-radius:14px; padding:10px 12px; text-align:center}
+  .stat b{display:block; font-size:clamp(18px, 4vw, 26px)}
+  .muted{color:var(--muted)}
+  .question{font-size:clamp(18px,4vw,28px); line-height:1.4; padding:8px 12px; background:#0f1627; border:1px dashed #26324d; border-radius:14px}
+  .answer-area{display:flex; gap:10px; margin-top:12px}
+  .answer-area input{flex:1}
+  .feedback{min-height:28px; padding:6px 10px}
+  .feedback.ok{color:var(--good)}
+  .feedback.no{color:var(--bad)}
+  .progress{height:10px; background:#101a2f; border:1px solid var(--line); border-radius:999px; overflow:hidden}
+  .progress>i{display:block; height:100%; width:0%; background:linear-gradient(90deg,var(--acc),var(--acc2)); transition:width .2s ease}
+  .letters{display:flex; flex-wrap:wrap; gap:8px; margin-top:12px}
+  .chip{padding:10px 12px; border-radius:12px; background:#0e1525; border:1px solid #27314a; cursor:pointer; user-select:none}
+  .chip.used{opacity:.35; pointer-events:none}
+  .picked{display:flex; flex-wrap:wrap; gap:8px; min-height:44px; padding:8px; border:1px dashed #27314a; border-radius:12px; margin-top:10px}
+  .picked .chip{background:#1b2742}
+  .kbd{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; background:#0e1525; border:1px solid #27314a; padding:.2em .5em; border-radius:6px}
+  footer{opacity:.8; text-align:center; padding:18px 10px}
+  .btn.choice.correct{outline:2px solid var(--good)}
+  .btn.choice.wrong{outline:2px solid var(--bad); opacity:.85}
+  .btn.choice .hintKey{opacity:.6; font-size:.85em; margin-left:.4em}
+  .preset-note{color:#b6c2d3; font-size:.9em}
+  /* High-contrast preset select */
+  #preset{ background:#0d1424 !important; color:var(--fg) !important; border:1px solid #2a3552 !important; min-width:200px; padding:10px 32px 10px 12px; border-radius:12px; -webkit-appearance:none; appearance:none; background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23b6c2d3' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>"); background-repeat:no-repeat; background-position:calc(100% - 10px) 50%; background-size:14px; }
+  #preset:focus{ box-shadow:0 0 0 3px rgba(110,168,255,.35); outline:none; }
+  #preset option{ background:#0d1424; color:var(--fg); }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap row" aria-label="게임 상단 바">
+    <h1>영단어 게임 · <span class="muted">스피드 퀴즈 v2.7</span></h1>
+    <span class="pill" title="게임 모드">
+      모드
+      <select id="mode">
+        <option value="en2kr" selected>영어 → 뜻 고르기</option>
+        <option value="kr2en">뜻 → 영어 맞히기</option>
+        <option value="jumble">철자 섞기(클릭)</option>
+      </select>
+    </span>
+    <span class="pill" title="라운드 시간">
+      시간
+      <select id="time">
+        <option value="60">60초</option>
+        <option value="120">120초</option>
+        <option value="180" selected>180초</option>
+      </select>
+    </span>
+    <button class="btn acc" id="btnStart" aria-label="게임 시작"><strong>시작</strong> ( <span class="kbd">Enter</span> )</button>
+    <button class="btn" id="btnPause" aria-label="일시정지">⏸ 일시정지</button>
+  </div>
+</header>
+
+<main class="wrap grid" aria-live="polite">
+  <section class="card" aria-label="게임 영역">
+    <div class="in">
+      <div class="row" style="justify-content:space-between; align-items:flex-end">
+        <div class="stats" aria-label="점수 보드">
+          <div class="stat"><small class="muted">점수</small><b id="score">0</b></div>
+          <div class="stat"><small class="muted">콤보</small><b id="combo">x0</b></div>
+          <div class="stat"><small class="muted">남은시간</small><b id="timeLeft">0</b></div>
+          <div class="stat"><small class="muted">하트</small><b id="lives">♥♥♥</b></div>
+          <div class="stat"><small class="muted">최고점</small><b id="best">0</b></div>
+        </div>
+      </div>
+
+      <div class="progress" aria-hidden="true" style="margin:12px 0 16px"><i id="bar"></i></div>
+      <div class="question" id="q">시작을 눌러 주세요! ✨</div>
+
+      <div id="answerBox" class="answer-area" style="display:none">
+        <input id="answer" type="text" placeholder="영어 단어 입력…" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" inputmode="latin" aria-label="정답 입력" />
+        <button class="btn primary" id="btnSubmit">정답!</button>
+        <button class="btn" id="btnHint" title="첫 글자 힌트 (점수 -5)">💡 힌트</button>
+        <button class="btn" id="btnSkip" title="하트 -1">↷ 스킵</button>
+      </div>
+
+      <div id="choiceBox" class="answer-area" style="display:none">
+        <div id="choices" class="row" style="flex-wrap:wrap; gap:8px"></div>
+      </div>
+
+      <div id="jumbleBox" style="display:none">
+        <div class="letters" id="letters"></div>
+        <div class="picked" id="picked" aria-label="선택한 글자"></div>
+        <div class="row" style="margin-top:10px">
+          <button class="btn primary" id="btnCheckJumble">완성!</button>
+          <button class="btn" id="btnClearJumble">지우기</button>
+        </div>
+      </div>
+
+      <div id="feedback" class="feedback" role="status"></div>
+    </div>
+  </section>
+
+  <aside class="card" aria-label="설정 및 단어 관리">
+    <div class="in">
+      <h3 style="margin:.2em 0 .4em">📚 세트 선택</h3>
+      <div class="row" style="gap:8px; flex-wrap:wrap">
+        <select id="preset">
+          <option value="none" selected>세트 선택…</option>
+          <option value="middle">중학교 500</option>
+          <option value="high">고등학교 500</option>
+          <option value="toeic">토익 500</option>
+        </select>
+        <button class="btn" id="btnLoad">세트 불러오기</button>
+        <button class="btn" id="btnAppend">지금 목록에 추가</button>
+        <span class="preset-note" id="presetInfo">세트에서 우선 120개를 로드합니다. 필요하면 더 채워드릴게요.</span>
+      </div>
+
+      <hr style="border-color:#172036; opacity:.6" />
+      <h3 style="margin:.2em 0 .4em">✍️ 단어 목록 (편집 가능)</h3>
+      <p class="muted" style="margin:.3em 0 .8em">한 줄에 <code>영어 = 한국어뜻</code> 형태. 저장하면 다음에도 유지됩니다.</p>
+      <textarea id="wordBox" style="width:100%; min-height:240px; background:#0d1424; color:var(--fg); border:1px solid var(--line); border-radius:12px; padding:10px 12px; font:13px/1.6 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"></textarea>
+
+      <div class="row" style="gap:8px; margin-top:10px; flex-wrap:wrap" aria-label="단어 추가 폼">
+        <input id="addEn" type="text" placeholder="영어 (예: estimate)" style="flex:1; min-width:180px" />
+        <input id="addKr" type="text" placeholder="뜻 (예: 추정하다)" style="flex:1; min-width:180px" />
+        <button class="btn" id="btnAdd">+ 추가</button>
+      </div>
+      <div class="row" style="margin-top:8px; justify-content:space-between">
+        <div class="row" style="gap:8px">
+          <button class="btn" id="btnReset">기본 단어 복원</button>
+          <button class="btn" id="btnSave">저장</button>
+        </div>
+        <label class="pill"><input type="checkbox" id="chkShuffle" checked /> 랜덤 섞기</label>
+        <label class="pill"><input type="checkbox" id="optNumKeys" checked /> 숫자키로 보기 선택 (1–6)</label>
+      </div>
+      <div class="sublabel" id="lookupStatus" style="margin-top:6px;color:#9fb4ff"></div>
+    </div>
+  </aside>
+</main>
+
+<footer class="wrap">
+  <small class="muted">Made with ❤️ — 프리셋(중/고/TOEIC) + 숫자키 선택 + 자동뜻 채우기. (v2.7)</small>
+</footer>
+
+<script>
+(function(){
+  // ====== 프리셋 샘플(각 120개; 요청 시 전체 500 확장 가능) ======
+  const PRESETS={
+    middle: `
+ability = 능력
+accept = 받아들이다
+achieve = 이루다
+across = 건너서, 가로질러
+active = 활동적인
+advice = 조언
+afraid = 두려운
+after = ~후에
+airport = 공항
+almost = 거의
+alone = 혼자인
+already = 이미
+also = 또한
+always = 항상
+ancient = 고대의
+answer = 대답, 정답
+appear = 나타나다
+apple = 사과
+arrive = 도착하다
+artist = 예술가
+autumn = 가을
+baby = 아기
+beach = 해변
+beautiful = 아름다운
+because = 왜냐하면
+become = ~이 되다
+before = ~전에
+begin = 시작하다
+behind = 뒤에
+believe = 믿다
+below = 아래에
+best = 최고의
+better = 더 나은
+between = 사이에
+big = 큰
+bird = 새
+black = 검은
+blue = 파란
+body = 몸
+book = 책
+borrow = 빌리다
+both = 둘 다
+bread = 빵
+breakfast = 아침식사
+bring = 가져오다
+brother = 형제
+build = 짓다
+busy = 바쁜
+butterfly = 나비
+buy = 사다
+camera = 카메라
+camp = 캠프
+careful = 조심스러운
+carry = 나르다
+celebrate = 축하하다
+center = 중심
+change = 바꾸다
+cheap = 값싼
+child = 아이
+choose = 고르다
+city = 도시
+class = 수업, 반
+clean = 깨끗한; 청소하다
+clear = 맑은, 분명한
+clever = 영리한
+climb = 오르다
+clock = 시계
+close = 닫다; 가까운
+cloud = 구름
+club = 동아리
+coat = 코트
+cold = 추운; 감기
+collect = 모으다
+color = 색깔
+common = 흔한
+company = 회사
+computer = 컴퓨터
+cook = 요리하다; 요리사
+cool = 시원한; 멋진
+corner = 모퉁이
+correct = 올바른
+country = 나라
+courage = 용기
+course = 과정, 코스
+create = 만들다
+culture = 문화
+curious = 호기심 많은
+daily = 매일의
+danger = 위험
+dark = 어두운
+day = 하루, 날
+decide = 결정하다
+delicious = 맛있는
+desert = 사막
+desk = 책상
+different = 다른
+direction = 방향
+discover = 발견하다
+dish = 접시, 요리
+distance = 거리
+door = 문
+down = 아래로
+draw = 그리다
+dream = 꿈; 꿈꾸다
+dress = 옷, 드레스
+drink = 마시다
+drive = 운전하다
+early = 일찍
+earth = 지구
+easy = 쉬운
+education = 교육
+either = ~또한 아니다(부정), 둘 중 하나
+eight = 여덟
+elephant = 코끼리
+energy = 에너지
+enough = 충분한
+environment = 환경
+example = 예시
+exercise = 운동
+experience = 경험
+family = 가족
+farmer = 농부
+fast = 빠른; 단식하다
+favorite = 가장 좋아하는
+festival = 축제
+few = 적은
+field = 들판, 분야
+finish = 끝내다
+follow = 따라가다
+forest = 숲
+friend = 친구
+future = 미래
+`,
+    high: `
+abstract = 추상적인
+accelerate = 가속하다
+accomplish = 성취하다
+adapt = 적응하다
+adequate = 충분한
+adolescent = 청소년의
+advance = 진보하다; 진전
+adverse = 부정적인, 불리한
+afford = 여유가 있다
+agriculture = 농업
+allocate = 할당하다
+alter = 바꾸다
+alternative = 대안
+ambiguous = 모호한
+ambition = 야망
+analyze = 분석하다
+annual = 매년의
+apparent = 분명한
+appeal = 호소하다; 매력
+appoint = 임명하다
+appreciate = 감사하다; 가치 평가하다
+approach = 접근하다; 접근법
+appropriate = 적절한
+approximate = 대략의
+arbitrary = 임의의
+architect = 건축가
+aspect = 측면
+assemble = 모으다, 조립하다
+assign = 할당하다
+assist = 돕다
+assume = 가정하다
+attempt = 시도하다; 시도
+attitude = 태도
+authority = 권위, 권한
+automatic = 자동의
+available = 이용 가능한
+aware = 알고 있는
+bacteria = 박테리아
+barrier = 장벽
+beneficial = 유익한
+bias = 편견
+calculate = 계산하다
+campaign = 운동, 캠페인
+capable = ~할 수 있는
+capacity = 용량; 능력
+cease = 중지하다
+cemetery = 묘지
+challenge = 도전; 도전하다
+characteristic = 특징
+clarify = 명확히 하다
+coherent = 일관된
+collaborate = 협력하다
+collapse = 붕괴하다
+colleague = 동료
+combine = 결합하다
+commodity = 상품
+compensate = 보상하다
+competent = 유능한
+compile = 편집하다; (코드) 컴파일하다
+complement = 보완하다; 보완물
+comply = 따르다
+component = 구성 요소
+comprehensive = 종합적인
+compromise = 타협(하다)
+conclude = 결론짓다
+confer = 협의하다
+confidence = 자신감
+confirm = 확인하다
+confront = 직면하다
+congress = 의회
+conscience = 양심
+conscious = 의식하는
+consequence = 결과
+conservative = 보수적인
+considerable = 상당한
+consistent = 일관된
+conspicuous = 눈에 띄는
+constitute = 구성하다
+constraint = 제약
+construct = 건설하다; 구성물
+consult = 상담하다
+consume = 소비하다
+contaminate = 오염시키다
+contemporary = 현대의
+context = 문맥; 맥락
+contradict = 모순되다
+controversy = 논란
+convenient = 편리한
+conventional = 전통적인
+convert = 전환하다
+convince = 설득하다
+cooperate = 협력하다
+coordinate = 조정하다; 좌표
+core = 핵심
+corporate = 기업의
+correspond = 일치하다; 서신 왕래하다
+criterion = 기준
+crucial = 결정적인
+cumulative = 누적의
+curriculum = 교육과정
+`,
+    toeic: `
+account = 계정; 설명하다
+acquire = 획득하다
+address = 주소; (문제를) 다루다
+advertise = 광고하다
+afford = 여유가 있다
+agenda = 의제
+allocate = 할당하다
+annual = 매년의
+appeal = 호소하다; 매력
+applicant = 지원자
+appointment = 약속; 임명
+approve = 승인하다
+arrangement = 준비, 마련
+assemble = 모으다, 조립하다
+assign = 배정하다
+assistant = 조수, 보조
+audit = 회계 감사; 감사하다
+authorized = 권한이 부여된
+available = 이용 가능한
+benefit = 혜택; 이익
+board = 탑승하다; 이사회
+branch = 지점; 나뭇가지
+budget = 예산
+candidate = 후보자
+cargo = 화물
+cater = 음식 공급을 하다
+certificate = 증명서
+client = 의뢰인, 고객
+committee = 위원회
+compensation = 보상
+complaint = 불만
+comply = 준수하다
+conference = 회의
+confirm = 확인하다
+consent = 동의(하다)
+consignment = 위탁, 탁송
+consumption = 소비
+contract = 계약(하다)
+convention = 관례; 학회
+convey = 전달하다
+corporation = 기업
+courier = 급송 택배
+coverage = 보도; 보장 범위
+credential = 자격증명
+credit = 신용; 외상
+deadline = 마감
+deal = 거래; 다루다
+debt = 빚
+deduct = 공제하다
+delay = 지연(시키다)
+delivery = 배송
+demand = 수요; 요구하다
+demonstrate = 시연하다; 입증하다
+department = 부서
+deposit = 예금; 보증금; 예치하다
+description = 설명
+designation = 지정, 직함
+detail = 세부사항
+device = 장치
+discount = 할인
+distribute = 배포하다
+editor = 편집자
+eligible = 자격이 있는
+embark = 탑승하다, 착수하다
+emphasis = 강조
+employee = 직원
+employer = 고용주
+enclose = 동봉하다
+endorse = 지지하다; (수표에) 배서하다
+engage = 관여하다; 약속하다
+ensure = 보장하다
+entitle = ~할 자격을 주다
+equipment = 장비
+estimate = 견적; 추정(하다)
+evacuate = 대피시키다
+exceed = 초과하다
+exhibit = 전시(하다)
+expense = 비용
+extend = 연장하다
+facility = 시설
+failed = 실패한; 불합격의
+fee = 요금, 수수료
+file = 서류철; 제출하다
+finance = 재정; 자금을 조달하다
+firm = 회사; 단단한
+forecast = 예보; 예측하다
+form = 양식; 형태
+freight = 화물 운송
+fund = 자금; 자금을 대다
+furnish = 비치하다, 제공하다
+`
+  };
+
+  // ====== 상태 & 저장소 ======
+  const storage={ get:(k,fb=null)=>{ try{ const v=localStorage.getItem(k); return v??fb } catch(e){ return fb } }, set:(k,v)=>{ try{ localStorage.setItem(k,v); return true } catch(e){ alert('저장 실패: 시크릿 모드/용량 초과'); return false } } };
+  const state={ playing:false, paused:false, mode:'en2kr', words:[], pool:[], current:null, score:0, combo:0, lives:3, totalTime:180, left:0, best:Number(storage.get('wordgame.best',0)||0) };
+
+  // ====== DOM ======
+  const $=s=>document.querySelector(s);
+  const modeSel=$('#mode'), timeSel=$('#time'), btnStart=$('#btnStart'), btnPause=$('#btnPause');
+  const bar=$('#bar'), q=$('#q');
+  const answerBox=$('#answerBox'), choiceBox=$('#choiceBox'), jumbleBox=$('#jumbleBox');
+  const answerInput=$('#answer'), btnSubmit=$('#btnSubmit'), btnHint=$('#btnHint'), btnSkip=$('#btnSkip');
+  const feedback=$('#feedback');
+  const scoreEl=$('#score'), comboEl=$('#combo'), livesEl=$('#lives'), bestEl=$('#best'), timeLeftEl=$('#timeLeft');
+  const lettersEl=$('#letters'), pickedEl=$('#picked');
+  const choicesEl=$('#choices');
+  const wordBox=$('#wordBox'), btnSave=$('#btnSave'), btnReset=$('#btnReset'), chkShuffle=$('#chkShuffle');
+  const addEn=$('#addEn'), addKr=$('#addKr'), btnAdd=$('#btnAdd');
+  const presetSel=$('#preset'), btnLoad=$('#btnLoad'), btnAppend=$('#btnAppend'), presetInfo=$('#presetInfo');
+  const optNumKeys=$('#optNumKeys');
+  const lookupStatus=$('#lookupStatus');
+
+  // ====== 기본 세트(스타터) ======
+  const DEFAULT_WORDS=`
+ability = 능력
+achieve = 이루다
+ancient = 고대의
+answer = 대답, 정답
+artist = 예술가
+beach = 해변
+begin = 시작하다
+believe = 믿다
+borrow = 빌리다
+brave = 용감한
+build = 짓다
+butterfly = 나비
+careful = 조심스러운
+celebrate = 축하하다
+center = 중심
+change = 바꾸다
+choose = 고르다
+clever = 영리한
+climb = 오르다
+cloud = 구름
+collect = 모으다
+common = 흔한
+company = 회사
+complete = 완료하다
+control = 통제하다
+country = 나라
+create = 만들다
+curious = 호기심 많은
+decide = 결정하다
+delicious = 맛있는
+different = 다른
+earth = 지구
+easy = 쉬운
+energy = 에너지
+enough = 충분한
+example = 예시
+exercise = 운동
+experience = 경험
+family = 가족
+favorite = 가장 좋아하는
+festival = 축제
+finish = 끝내다
+follow = 따라가다
+forest = 숲
+future = 미래
+honest = 정직한
+include = 포함하다
+island = 섬
+journey = 여행
+language = 언어
+library = 도서관
+machine = 기계
+moment = 순간
+mountain = 산
+nature = 자연
+parents = 부모님
+planet = 행성
+practice = 연습; 연습하다
+present = 선물; 현재의; 발표하다
+protect = 보호하다
+reason = 이유
+really = 정말로
+science = 과학
+season = 계절
+secret = 비밀
+special = 특별한
+spring = 봄; 용수철
+success = 성공
+travel = 여행하다
+weather = 날씨
+wonderful = 멋진
+`;
+
+  // ====== 파서 ======
+  function parseWords(text){ const list=[]; text.split(/\n+/).forEach(line=>{ const t=line.trim(); if(!t) return; const m=t.split('='); if(m.length>=2){ const en=m[0].trim(); const kr=m.slice(1).join('=').trim(); if(en&&kr) list.push({en,kr}); } }); return list; }
+
+  // ====== 로드/세이브 ======
+  function loadWords(){ const saved=storage.get('wordgame.words'); const text=saved||DEFAULT_WORDS; wordBox.value=text.trim(); state.words=parseWords(text); rebuildDict(); }
+  function saveWords(){ const ok=storage.set('wordgame.words', wordBox.value.trim()); state.words=parseWords(wordBox.value); rebuildDict(); if(ok) toast('단어 저장 완료!'); }
+
+  // ====== 로컬 사전(자동 뜻 채우기) ======
+  let dict=new Map();
+  function rebuildDict(){ dict=new Map(); // 프리셋 + 현재 목록 병합
+    Object.values(PRESETS).forEach(txt=>parseWords(txt).forEach(({en,kr})=>dict.set(en.toLowerCase(), kr)));
+    parseWords(wordBox.value).forEach(({en,kr})=>dict.set(en.toLowerCase(), kr));
+    lookupStatus.textContent=`사전 크기: ${dict.size.toLocaleString()} 단어`;
+  }
+  function lookupMeaning(en){ if(!en) return ''; return dict.get(en.toLowerCase())||''; }
+
+  // ====== 단어 추가(버튼/Enter) ======
+  function addWord(){
+    const en=(addEn?.value||'').trim();
+    let kr=(addKr?.value||'').trim();
+    if(!en){ toast('영어 단어를 입력해 주세요'); return; }
+    if(!kr){ const guess=lookupMeaning(en); if(guess){ kr=guess; lookupStatus.textContent='사전에서 뜻 자동 채움 ✅'; } else { kr=en; } }
+    const cur = wordBox.value.trim();
+    const newLine = `${en} = ${kr}`;
+    wordBox.value = (cur?cur+'\n':'') + newLine; // \n 버그 픽스
+    saveWords();
+    if(addEn) addEn.value='';
+    if(addKr) addKr.value='';
+    toast('단어가 추가되었어요');
+  }
+
+  // ====== 프리셋 로딩 ======
+  function getPresetText(key){ return PRESETS[key]||''; }
+  function labelOf(key){ return key==='middle'?'중학교 500': key==='high'?'고등학교 500':'토익 500'; }
+  function loadPreset(replace=true){ const key=presetSel.value; if(key==='none'){ toast('세트를 먼저 선택하세요'); return; } const text=getPresetText(key).trim(); if(!text){ toast('세트가 비어있어요'); return; } if(replace){ wordBox.value=text; } else { const cur=wordBox.value.trim(); wordBox.value=(cur?cur+'\n':'')+text; } state.words=parseWords(wordBox.value); rebuildDict(); presetInfo.textContent=labelOf(key)+' — 120개 로드됨 (요청 시 500개로 확장)'; toast((replace?'세트 불러오기: ':'세트 추가: ')+labelOf(key)); }
+
+  // ====== 게임 로직 ======
+  const rand=n=>Math.floor(Math.random()*n); const shuffle=arr=>arr.sort(()=>Math.random()-.5);
+  function resetPool(){ state.pool=state.words.slice(); if(chkShuffle?.checked) shuffle(state.pool); }
+  function pickWord(){ if(state.pool.length===0) resetPool(); const idx=rand(state.pool.length); return state.pool.splice(idx,1)[0]; }
+  function formatLives(n){ return '♥'.repeat(n)+'♡'.repeat(Math.max(0,3-n)); }
+  function setModeUI(){ answerBox.style.display=(state.mode==='kr2en')?'flex':'none'; choiceBox.style.display=(state.mode==='en2kr')?'flex':'none'; jumbleBox.style.display=(state.mode==='jumble')?'block':'none'; }
+  function startGame(){ if(state.words.length<4){ toast('단어가 너무 적어요. 세트를 불러오거나 더 추가해 주세요!'); return; } state.playing=true; state.paused=false; feedback.textContent=''; state.mode=modeSel.value; state.totalTime=parseInt(timeSel.value,10); state.score=0; state.combo=0; state.lives=3; state.left=state.totalTime; scoreEl.textContent=state.score; comboEl.textContent='x'+state.combo; livesEl.textContent=formatLives(state.lives); bestEl.textContent=state.best; timeLeftEl.textContent=state.left; setModeUI(); resetPool(); nextQuestion(); if(state.mode==='kr2en'){ answerInput.value=''; answerInput.focus(); } runTimer(); }
+  let timerId=null; function runTimer(){ clearInterval(timerId); const total=state.totalTime; timerId=setInterval(()=>{ if(!state.playing||state.paused){return} state.left--; timeLeftEl.textContent=state.left; const pct=Math.max(0, Math.min(100, 100*(total-state.left)/total)); bar.style.width=pct+'%'; if(state.left<=0){ endGame(); } },1000); }
+  function endGame(){ state.playing=false; clearInterval(timerId); bar.style.width='100%'; q.innerHTML=`게임 종료!<br>점수 <b>${state.score}</b> · 콤보 <b>x${state.combo}</b>`; feedback.className='feedback'; if(state.score>state.best){ state.best=state.score; storage.set('wordgame.best', String(state.best)); bestEl.textContent=state.best; toast('🎉 최고 기록 갱신!'); } }
+  function addScore(base){ const bonus=Math.min(5,Math.floor(state.combo/3)); state.score+=base+bonus; scoreEl.textContent=state.score; }
+  function loseLife(){ state.lives--; livesEl.textContent=formatLives(state.lives); if(state.lives<=0){ endGame(); } }
+  function renderChoices(options){ choicesEl.innerHTML=''; options.forEach((txt,i)=>{ const b=document.createElement('button'); b.className='btn choice'; b.textContent=txt; const n=i+1; const hint=document.createElement('span'); hint.className='hintKey'; hint.textContent=` [${n}]`; b.appendChild(hint); b.dataset.key=String(n); b.addEventListener('click',()=>checkChoice(txt,b)); choicesEl.appendChild(b); }); }
+  function nextQuestion(){ state.current=pickWord(); if(state.mode==='kr2en'){ q.innerHTML=`뜻: <b>${escapeHtml(state.current.kr)}</b>`; feedback.textContent=''; } else if(state.mode==='en2kr'){ const options=[state.current.kr]; const candidates=shuffle(state.words.filter(w=>w.kr!==state.current.kr)).slice(0,3).map(w=>w.kr); options.push(...candidates); shuffle(options); q.innerHTML=`영단어: <b>${escapeHtml(state.current.en)}</b>`; renderChoices(options); feedback.textContent=''; const first=choicesEl.querySelector('button'); first?.focus(); } else if(state.mode==='jumble'){ const word=state.current.en.toLowerCase(); const letters=shuffle(word.split('')); lettersEl.innerHTML=''; pickedEl.innerHTML=''; letters.forEach((ch,i)=>{ const d=document.createElement('span'); d.className='chip'; d.textContent=ch; d.dataset.i=i; d.addEventListener('click',()=>{ if(d.classList.contains('used')) return; d.classList.add('used'); const c=document.createElement('span'); c.className='chip'; c.textContent=ch; c.dataset.i=i; pickedEl.appendChild(c); }); lettersEl.appendChild(d); }); feedback.textContent='뜻: '+state.current.kr; } }
+  function onCorrect(){ feedback.textContent='정답!'; feedback.className='feedback ok'; state.combo++; comboEl.textContent='x'+state.combo; addScore(10); }
+  function onWrong(msg){ feedback.textContent=msg; feedback.className='feedback no'; state.combo=0; comboEl.textContent='x0'; loseLife(); }
+  function checkAnswer(){ if(!state.playing||state.paused) return; const val=answerInput.value.trim().toLowerCase(); const ans=state.current.en.toLowerCase(); if(!val) return; if(val===ans){ onCorrect(); answerInput.value=''; nextQuestion(); } else { onWrong(`틀렸어요! 정답은 \"${state.current.en}\"`); answerInput.select(); } }
+  function disableChoices(){ choicesEl.querySelectorAll('button').forEach(b=>b.disabled=true); }
+  function checkChoice(txt, btn){ if(!state.playing||state.paused) return; const ok=(txt===state.current.kr); if(ok){ btn.classList.add('correct'); onCorrect(); disableChoices(); setTimeout(()=>nextQuestion(),160); } else { btn.classList.add('wrong'); onWrong(`틀렸어요! 정답: ${state.current.kr}`); disableChoices(); setTimeout(()=>nextQuestion(),260); } }
+  function giveHint(){ if(!state.playing||state.paused) return; const ans=state.current.en; feedback.textContent='힌트: '+ans[0]+' _'.repeat(Math.max(0,ans.length-1)); feedback.className='feedback'; state.score=Math.max(0,state.score-5); scoreEl.textContent=state.score; }
+  function skip(){ if(!state.playing||state.paused) return; loseLife(); state.combo=0; comboEl.textContent='x0'; nextQuestion(); }
+  function pause(){ if(!state.playing) return; state.paused=!state.paused; btnPause.textContent=state.paused?'▶ 재개':'⏸ 일시정지'; feedback.textContent=state.paused?'일시정지 중':''; }
+
+  // ====== 이벤트 ======
+  btnStart.addEventListener('click', startGame);
+  btnPause.addEventListener('click', pause);
+  btnSubmit.addEventListener('click', checkAnswer);
+  btnHint.addEventListener('click', giveHint);
+  btnSkip.addEventListener('click', skip);
+  document.querySelector('#btnCheckJumble')?.addEventListener('click', ()=>{});
+  document.querySelector('#btnClearJumble')?.addEventListener('click', ()=>{pickedEl.innerHTML=''; lettersEl.querySelectorAll('.chip').forEach(c=>c.classList.remove('used'));});
+  modeSel.addEventListener('change', ()=>{ state.mode=modeSel.value; setModeUI(); });
+  btnSave.addEventListener('click', saveWords);
+  btnReset.addEventListener('click', ()=>{ wordBox.value=DEFAULT_WORDS.trim(); saveWords(); toast('기본 단어로 복원했어요'); });
+  if(btnAdd) btnAdd.addEventListener('click', addWord);
+  if(addEn) addEn.addEventListener('input', ()=>{ const en=addEn.value.trim(); const m=lookupMeaning(en); if(en && m){ addKr.value=m; lookupStatus.textContent='사전에서 뜻 자동 채움 ✅'; } else { lookupStatus.textContent=en? '사전에 없음 — 직접 입력해 주세요':' '; } });
+  if(addEn) addEn.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); addWord(); } });
+  if(addKr) addKr.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); addWord(); } });
+  btnLoad.addEventListener('click', ()=>loadPreset(true));
+  btnAppend.addEventListener('click', ()=>loadPreset(false));
+
+  // 단축키: 저장/시작/제출/숫자키 보기
+  document.addEventListener('keydown', (e)=>{
+    if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='s'){ e.preventDefault(); saveWords(); toast('저장(Ctrl/⌘+S) 완료'); }
+    if(e.key==='Enter' && !state.playing){ startGame(); return; }
+    if(!state.playing || state.paused) return;
+    if(e.key==='Enter' && state.mode==='kr2en'){ e.preventDefault(); return checkAnswer(); }
+    if(e.key===' '){ e.preventDefault(); return pause(); }
+    if(state.mode==='en2kr' && optNumKeys?.checked){ const n=Number(e.key); if(n>=1 && n<=6){ const btn=choicesEl.querySelector(`button[data-key=\"${n}\"]`); if(btn){ e.preventDefault(); btn.click(); } } }
+  });
+
+  // ====== 초기화 ======
+  function escapeHtml(s){ return s.replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[c])); }
+  function toast(msg){ if(!window.__toast){ const el=document.createElement('div'); Object.assign(el.style,{position:'fixed',left:'50%',bottom:'20px',transform:'translateX(-50%)',background:'#111a2d',border:'1px solid #2a3552',color:'var(--fg)',padding:'10px 14px',borderRadius:'10px',boxShadow:'var(--shadow)',zIndex:10}); document.body.appendChild(el); window.__toast=el; } const el=window.__toast; el.textContent=msg; el.style.opacity='1'; clearTimeout(window.__toastTimer); window.__toastTimer=setTimeout(()=>el.style.opacity='0',1200); }
+  loadWords(); setModeUI(); timeLeftEl.textContent='0'; bestEl.textContent=state.best;
+})();
+</script>
+</body>
+</html>
